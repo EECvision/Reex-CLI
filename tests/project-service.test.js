@@ -62,4 +62,46 @@ test('Project Service Tests', async (t) => {
         assert.strictEqual(manifest[moduleName].get_list.url, '/orders', 'URL should be extracted');
         assert.strictEqual(manifest[moduleName].get_list.client, 'API_CLIENT', 'Client should be extracted');
     });
+
+    await t.test('generateManifest expands recursive types', async () => {
+        const definitionsDir = fs.mkdtempSync(path.join(os.tmpdir(), 'project-service-types-'));
+        t.after(() => fs.rmSync(definitionsDir, { recursive: true, force: true }));
+
+        fs.writeFileSync(path.join(definitionsDir, 'complexTypes.ts'), `
+            import { handleApiCall, BASE_CLIENT } from '../config/utils';
+
+            interface Address {
+                street: string;
+                city: string;
+            }
+
+            interface User {
+                id: string;
+                address: Address;
+            }
+
+            export const complexTypesApi = {
+                createUser: (data: { name: string, metadata: { role: string } }, profile: User) => 
+                    handleApiCall(() => BASE_CLIENT.post('/users', { data }), 'createUser')
+            };
+        `);
+
+        const manifest = projectService.generateManifest(definitionsDir);
+        const method = manifest.complexTypes.createUser;
+
+        assert.strictEqual(method.args[0].name, 'data');
+        assert.strictEqual(method.args[0].isObject, true);
+        assert.strictEqual(method.args[0].properties[0].name, 'name');
+        assert.strictEqual(method.args[0].properties[1].name, 'metadata');
+        assert.strictEqual(method.args[0].properties[1].isObject, true);
+        assert.strictEqual(method.args[0].properties[1].properties[0].name, 'role');
+
+        const profileArg = method.args[1];
+        assert.strictEqual(profileArg.name, 'profile');
+        assert.strictEqual(profileArg.isObject, true);
+        assert.strictEqual(profileArg.properties[0].name, 'id');
+        assert.strictEqual(profileArg.properties[1].name, 'address');
+        assert.strictEqual(profileArg.properties[1].isObject, true);
+        assert.strictEqual(profileArg.properties[1].properties[0].name, 'street');
+    });
 });

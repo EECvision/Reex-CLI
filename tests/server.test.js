@@ -33,6 +33,15 @@ test('Bridge Server Integration Tests', async (t) => {
     // Wait for startup generation (async)
     await new Promise(r => setTimeout(r, 2000));
 
+    const waitForFile = async (filePath, timeout = 5000) => {
+        const start = Date.now();
+        while (Date.now() - start < timeout) {
+            if (fs.existsSync(filePath)) return true;
+            await new Promise(r => setTimeout(r, 100));
+        }
+        return false;
+    };
+
     // Cleanup Helper
     t.after(async () => {
         server.close();
@@ -49,16 +58,26 @@ test('Bridge Server Integration Tests', async (t) => {
         assert.ok(data.targetDir.includes('server-test'));
     });
 
-    await t.test('Config Scaffolding', () => {
+    await t.test('Config Scaffolding', async () => {
         // Assert config/index.ts was created on startup
-        assert.ok(fs.existsSync(path.join(configDir, 'index.ts')), 'Config file should have been scaffolded');
+        const exists = await waitForFile(path.join(configDir, 'index.ts'));
+        assert.ok(exists, 'Config file should have been scaffolded');
+
         const content = fs.readFileSync(path.join(configDir, 'index.ts'), 'utf8');
         assert.ok(content.includes('export const baseURL'), 'Config should contain default baseURL');
+        assert.ok(content.includes('export const BASE_CLIENT'), 'Config should contain BASE_CLIENT');
+        assert.ok(content.includes('export interface ApiError'), 'Config should contain ApiError interface');
+
+        // Assert utils.ts
+        assert.ok(fs.existsSync(path.join(configDir, 'utils.ts')), 'Utils file should have been scaffolded');
+        const utilsContent = fs.readFileSync(path.join(configDir, 'utils.ts'), 'utf8');
+        assert.ok(utilsContent.includes('export const handleApiCall'), 'Utils should contain handleApiCall');
     });
 
-    await t.test('Generated Folder Restoration', () => {
+    await t.test('Generated Folder Restoration', async () => {
         // Assert generated/index.ts exists
-        assert.ok(fs.existsSync(path.join(generatedDir, 'index.ts')), 'Generated index should exist');
+        const exists = await waitForFile(path.join(generatedDir, 'index.ts'));
+        assert.ok(exists, 'Generated index should exist');
         assert.ok(fs.existsSync(path.join(generatedDir, `use${moduleName.charAt(0).toUpperCase()}${moduleName.slice(1)}Queries.ts`)), 'Generated module hooks should exist');
     });
 

@@ -94,11 +94,16 @@ class ProjectService {
 
                                     // Expand args
                                     if (init && (init.getKind() === SyntaxKind.ArrowFunction || init.getKind() === SyntaxKind.FunctionExpression)) {
-                                        const params = init.getParameters().map(p => this.getParameterDetails(p, sourceFile));
-                                        const metadata = extractMetadata(init);
-
-                                        moduleExports[methodName] = { args: params, ...metadata };
-                                        count++;
+                                        try {
+                                            const params = init.getParameters().map(p => this.getParameterDetails(p, sourceFile));
+                                            const metadata = extractMetadata(init);
+                                            moduleExports[methodName] = { args: params, ...metadata };
+                                            count++;
+                                        } catch (err) {
+                                            console.error(`[ProjectService] Error processing ${methodName}:`, err);
+                                        }
+                                    } else {
+                                        // console.log(`[ProjectService] Skipping ${methodName} - Kind: ${init ? init.getKind() : 'None'}`);
                                     }
                                 }
                             }
@@ -106,6 +111,8 @@ class ProjectService {
                     }
                 }
             }
+
+            // console.log(`[ProjectService] Module ${moduleName} exports:`, Object.keys(moduleExports));
 
             if (count) {
                 apiManifest[moduleName] = moduleExports;
@@ -163,9 +170,86 @@ class ProjectService {
         return config;
     }
 
+    expandTypeRecursively(typeNode, sourceFile) {
+        if (!typeNode) return null;
+
+        const kind = typeNode.getKind();
+
+        // Object Literal: { foo: string }
+        if (kind === SyntaxKind.TypeLiteral) {
+            return {
+                isObject: true,
+                properties: typeNode.getProperties().map((prop) => {
+                    const name = prop.getName();
+                    const optional = prop.hasQuestionToken ? prop.hasQuestionToken() : false;
+                    const propTypeNode = prop.getTypeNode();
+
+                    const nested = this.expandTypeRecursively(propTypeNode, sourceFile);
+                    if (nested) {
+                        return { name, isOptional: optional, ...nested };
+                    }
+
+                    return {
+                        name,
+                        isOptional: optional,
+                        type: prop.getType().getText(),
+                    };
+                }),
+            };
+        }
+
+        // Type Reference: MyInterface
+        if (kind === SyntaxKind.TypeReference) {
+            const typeName = typeNode.getTypeName().getText();
+
+            // Find declaration in the file
+            const declaration =
+                sourceFile.getInterfaces().find((i) => i.getName() === typeName) ||
+                sourceFile.getTypeAliases().find((t) => t.getName() === typeName);
+
+            if (!declaration) return { type: typeName };
+
+            let props = [];
+
+            if (declaration.getKind() === SyntaxKind.InterfaceDeclaration) {
+                props = declaration.getProperties();
+            } else if (declaration.getKind() === SyntaxKind.TypeAliasDeclaration) {
+                const tn = declaration.getTypeNode();
+                if (tn && tn.getProperties) props = tn.getProperties();
+            }
+
+            return {
+                isObject: true,
+                properties: props.map((prop) => {
+                    const name = prop.getName();
+                    const optional = (prop.hasQuestionToken && prop.hasQuestionToken()) || (prop.isOptional && prop.isOptional()) || false;
+                    const propTypeNode = prop.getTypeNode();
+
+                    const nested = this.expandTypeRecursively(propTypeNode, sourceFile);
+                    if (nested) {
+                        return { name, isOptional: optional, ...nested };
+                    }
+
+                    return {
+                        name,
+                        isOptional: optional,
+                        type: prop.getType().getText(),
+                    };
+                }),
+            };
+        }
+
+        return null;
+    }
+
     getParameterDetails(param, sourceFile) {
         const name = param.getName();
         const isOptional = param.isOptional();
+        const typeNode = param.getTypeNode();
+
+        const expanded = this.expandTypeRecursively(typeNode, sourceFile);
+        if (expanded) return { name, isOptional, ...expanded };
+
         return { name, isOptional };
     }
 

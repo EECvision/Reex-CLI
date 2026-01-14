@@ -82,6 +82,8 @@ function startServer(port) {
         const regenerate = () => {
             const definitionsDir = path.join(apiTargetDir, 'src', 'api-services', 'definitions');
             const configDir = path.join(apiTargetDir, 'src', 'api-services', 'config');
+            const indexPath = path.join(configDir, 'index.ts');
+            const utilsPath = path.join(configDir, 'utils.ts');
 
             try {
                 console.log("[WATCHER] Regenerating Manifest & Hooks...");
@@ -89,11 +91,160 @@ function startServer(port) {
                 // 1. Ensure Config Exists (Scaffold)
                 if (!fs.existsSync(configDir)) {
                     fs.mkdirSync(configDir, { recursive: true });
-                    const configContent = `// API Configuration
-export const baseURL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api";
+                }
+
+                // index.ts
+                if (!fs.existsSync(indexPath)) {
+                    const indexContent = `/* eslint-disable @typescript-eslint/no-explicit-any */
+
+// index.ts
+
+import axios, { AxiosResponse, AxiosError } from "axios";
+
+// ============================================================================
+// TYPE DEFINITIONS
+// ============================================================================
+
+export interface ApiError {
+  message: string;
+  code?: string;
+  statusCode?: number;
+}
+
+export interface ApiResponse<T> {
+  data?: T;
+  error?: ApiError;
+}
+
+// ============================================================================
+// REQUEST CONFIG
+// ============================================================================
+
+export const baseURL =
+  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000/api";
+
+export const BASE_CLIENT = axios.create({
+  baseURL,
+  timeout: 30000,
+});
+
+export const BASE_CLIENT_V1 = axios.create({
+  baseURL: baseURL + "/v1",
+  timeout: 30000,
+});
+
+export const AUTH_CLIENT = axios.create({
+  baseURL: baseURL + "/auth",
+  timeout: 30000,
+});
+
+// ============================================================================
+// REQUEST INTERCEPTOR (attach token)
+// ============================================================================
+
+const attachTokenInterceptor = (client: any) => {
+  client.interceptors.request.use((config: any) => {
+    const token = ""; // READ FROM STATE
+    if (token) {
+      config.headers = config.headers ?? {};
+      config.headers.Authorization = \`Bearer \${token}\`;
+    }
+    return config;
+  });
+};
+
+attachTokenInterceptor(BASE_CLIENT);
+attachTokenInterceptor(BASE_CLIENT_V1);
+attachTokenInterceptor(AUTH_CLIENT);
+
+// ============================================================================
+// RESPONSE INTERCEPTOR (handle 401)
+// ============================================================================
+
+const attachErrorInterceptor = (client: any) => {
+  client.interceptors.response.use(
+    (res: AxiosResponse) => res,
+    async (err: AxiosError) => {
+      if (err.response?.status === 401) {
+        console.warn("[AUTH] Unauthorized → Token cleared.");
+      }
+      return Promise.reject(err);
+    }
+  );
+};
+
+attachErrorInterceptor(BASE_CLIENT);
+attachErrorInterceptor(BASE_CLIENT_V1);
+attachErrorInterceptor(AUTH_CLIENT);
 `;
-                    fs.writeFileSync(path.join(configDir, 'index.ts'), configContent);
+                    fs.writeFileSync(indexPath, indexContent);
                     console.log("[WATCHER] Scaffoled config/index.ts");
+                }
+
+                // utils.ts
+                if (!fs.existsSync(utilsPath)) {
+                    const utilsContent = `/* eslint-disable @typescript-eslint/no-explicit-any */
+
+//utils.ts
+
+import { AxiosResponse } from "axios";
+import { ApiError, ApiResponse } from ".";
+
+// ============================================================================
+// ERROR HANDLING
+// ============================================================================
+
+export const handleError = (error: any, label?: string): ApiError => {
+  const message =
+    error?.response?.data?.msg ||
+    error?.response?.data?.message ||
+    error?.response?.data?.error ||
+    error?.message ||
+    "An unexpected error occurred";
+
+  const apiError: ApiError = {
+    message,
+    code: error?.response?.data?.code,
+    statusCode: error?.response?.status,
+  };
+
+  console.error(\`[API ERROR - \${label}]\`, apiError);
+  return apiError;
+};
+
+// ============================================================================
+// API CALL WRAPPER
+// ============================================================================
+
+export const handleApiCall = async <T>(
+  fn: () => Promise<AxiosResponse<T>>,
+  label: string
+): Promise<ApiResponse<T>> => {
+  try {
+    const res = await fn();
+    return { data: res.data };
+  } catch (err: any) {
+    return { error: handleError(err, label) };
+  }
+};
+
+// ============================================================================
+// QUERY UTIL
+// ============================================================================
+
+export const constructQueryParams = (payload: Record<string, any>): string => {
+  const query = Object.entries(payload)
+    .filter(([, v]) => v !== undefined && v !== null && v !== "")
+    .map(
+      ([k, v]) => \`\${encodeURIComponent(k)}=\${encodeURIComponent(String(v))}\`
+    )
+    .join("&");
+
+  return query ? \`?\${query}\` : "";
+};
+`;
+                    fs.writeFileSync(utilsPath, utilsContent);
+                    console.log("[WATCHER] Scaffoled config/utils.ts");
                 }
 
                 // 2. Generate Manifest
