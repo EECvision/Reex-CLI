@@ -62,23 +62,73 @@ function startServer(port) {
     });
 
     // ---------------------------------------------------------
+    // File Operations Router
+    // ---------------------------------------------------------
+    const router = express.Router();
+
+    // ---------------------------------------------------------
     // File Watcher
     // ---------------------------------------------------------
+    let watcher = null;
     if (apiTargetDir) {
         console.log(`[WATCHER] Monitoring ${apiTargetDir}`);
-        const watcher = chokidar.watch(apiTargetDir, {
+        watcher = chokidar.watch(apiTargetDir, {
             ignored: /(^|[\/\\])\../,
             persistent: true,
             ignoreInitial: true
         });
 
+        // Regeneration Helper
+        const regenerate = () => {
+            const definitionsDir = path.join(apiTargetDir, 'src', 'api-services', 'definitions');
+            const configDir = path.join(apiTargetDir, 'src', 'api-services', 'config');
+
+            try {
+                console.log("[WATCHER] Regenerating Manifest & Hooks...");
+
+                // 1. Ensure Config Exists (Scaffold)
+                if (!fs.existsSync(configDir)) {
+                    fs.mkdirSync(configDir, { recursive: true });
+                    const configContent = `// API Configuration
+export const baseURL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api";
+`;
+                    fs.writeFileSync(path.join(configDir, 'index.ts'), configContent);
+                    console.log("[WATCHER] Scaffoled config/index.ts");
+                }
+
+                // 2. Generate Manifest
+                const manifest = projectService.generateManifest(definitionsDir);
+
+                // 3. Generate Hooks
+                const hookService = require('./services/hook-service');
+                hookService.generateHooks(apiTargetDir, manifest);
+
+                sendEvent(Date.now().toString(), 'project:updated', 'Project generated');
+                console.log("[WATCHER] Regeneration Complete");
+                return { success: true, manifestKeys: Object.keys(manifest) };
+            } catch (e) {
+                console.error("[WATCHER] Regeneration Failed:", e);
+                throw e;
+            }
+        };
+
+        let debounceTimer;
         watcher.on('all', (event, filePath) => {
-            // Debounce or just send raw?
-            sendEvent(Date.now().toString(), 'project:updated', 'Project files changed');
+            if (filePath.includes('generated') || filePath.includes('config')) return;
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(regenerate, 1000);
+        });
+
+        // Debug Endpoint to force regeneration
+        router.post('/debug/regenerate', (req, res) => {
+            try {
+                const result = regenerate();
+                res.json(result);
+            } catch (e) {
+                res.status(500).json({ error: e.message, stack: e.stack });
+            }
         });
     }
-
-    const router = express.Router();
 
     // Health Check
     router.get('/health', (req, res) => res.json({ status: 'ok', cwd: process.cwd(), targetDir: apiTargetDir }));
@@ -139,6 +189,19 @@ function startServer(port) {
         } catch (error) {
             console.error("Error reading definitions:", error);
             res.status(500).json({ error: error.message });
+        }
+    });
+
+    // Get Manifest (Smart Bridge Upgrade)
+    router.get('/project/manifest', (req, res) => {
+        const definitionsDir = path.join(apiTargetDir, 'src', 'api-services', 'definitions');
+        console.log(`[MANIFEST] Generating from: ${definitionsDir}`);
+        try {
+            const manifest = projectService.generateManifest(definitionsDir);
+            res.json(manifest);
+        } catch (e) {
+            console.error(`[MANIFEST] Error:`, e);
+            res.status(500).json({ error: e.message });
         }
     });
 
@@ -220,9 +283,15 @@ function startServer(port) {
 
     app.use('/api', router);
 
-    app.listen(port, () => {
+    const server = app.listen(port, () => {
         console.log(`Server running at http://localhost:${port}`);
+        if (apiTargetDir && typeof regenerate === 'function') {
+            console.log("[STARTUP] Triggering initial generation...");
+            regenerate();
+        }
     });
+
+    return { server, watcher };
 }
 
 module.exports = { startServer };

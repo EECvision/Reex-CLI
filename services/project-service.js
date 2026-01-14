@@ -50,13 +50,54 @@ class ProjectService {
                                     const methodName = property.getName();
                                     const init = property.getInitializer();
 
+                                    // Helper to extract metadata from function body
+                                    const extractMetadata = (funcNode) => {
+                                        let client = "UNKNOWN_CLIENT";
+                                        let url = "";
+
+                                        // Look for: const url = "/path";
+                                        const variableStatements = funcNode.getBody().getDescendantsOfKind(SyntaxKind.VariableStatement);
+                                        for (const stmt of variableStatements) {
+                                            const decl = stmt.getDeclarations()[0];
+                                            if (decl.getName() === "url") {
+                                                const init = decl.getInitializer();
+                                                if (init) {
+                                                    if (init.getKind() === SyntaxKind.StringLiteral || init.getKind() === SyntaxKind.NoSubstitutionTemplateLiteral) {
+                                                        url = init.getLiteralValue();
+                                                    } else if (init.getKind() === SyntaxKind.TemplateExpression) {
+                                                        // Handle `path${query}` -> extract "path"
+                                                        url = init.getHead().getLiteralText();
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        // Look for: handleApiCall(() => CLIENT.method(url), ...)
+                                        const callExprs = funcNode.getBody().getDescendantsOfKind(SyntaxKind.CallExpression);
+                                        for (const call of callExprs) {
+                                            if (call.getExpression().getText() === "handleApiCall") {
+                                                // First arg is arrow function: () => CLIENT.method(...)
+                                                const firstArg = call.getArguments()[0];
+                                                if (firstArg && (firstArg.getKind() === SyntaxKind.ArrowFunction || firstArg.getKind() === SyntaxKind.FunctionExpression)) {
+                                                    const innerCall = firstArg.getBody(); // CLIENT.method(url)
+                                                    if (innerCall.getKind() === SyntaxKind.CallExpression) {
+                                                        const expr = innerCall.getExpression(); // CLIENT.method (PropertyAccessExpression)
+                                                        if (expr.getKind() === SyntaxKind.PropertyAccessExpression) {
+                                                            client = expr.getExpression().getText(); // CLIENT
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        return { client, url };
+                                    };
+
                                     // Expand args
                                     if (init && (init.getKind() === SyntaxKind.ArrowFunction || init.getKind() === SyntaxKind.FunctionExpression)) {
                                         const params = init.getParameters().map(p => this.getParameterDetails(p, sourceFile));
+                                        const metadata = extractMetadata(init);
 
-                                        // Attempt to extract client/url from body?
-                                        // For now, in "Dumb CLI" mode, we might just need the method names.
-                                        moduleExports[methodName] = { args: params };
+                                        moduleExports[methodName] = { args: params, ...metadata };
                                         count++;
                                     }
                                 }
@@ -99,14 +140,13 @@ class ProjectService {
                 }
                 // Case 2: Binary Expression (process.env.FOO || "http://...")
                 else if (init.getKind() === SyntaxKind.BinaryExpression) {
-                    // We try to find the string literal fallback
-                    const right = init.getRight();
-                    if (right.getKind() === SyntaxKind.StringLiteral) {
-                        config.baseURL = right.getLiteralValue();
-                    } else {
-                        // If it's something else, maybe check left? unlikely for env || default
-                        config.baseURL = "http://localhost:3000/api"; // Sensible default if we can't parse
-                    }
+                    try {
+                        // Attempt to get right side for default
+                        const right = init.getRight();
+                        if (right.getKind() === SyntaxKind.StringLiteral) {
+                            config.baseURL = right.getLiteralValue();
+                        }
+                    } catch (e) { console.warn("Failed to parse baseURL binary expr", e); }
                 }
                 // Case 3: Template Literal
                 else if (init.getKind() === SyntaxKind.NoSubstitutionTemplateLiteral) {
