@@ -432,6 +432,25 @@ export const constructQueryParams = (payload: Record<string, any>): string => {
     // For now, let's keep it minimal.
     // ---------------------------------------------------------
 
+    // List Files (The "Scan" Hand)
+    router.post('/fs/list', async (req, res) => {
+        try {
+            const { filePath } = req.body;
+            const safePath = path.resolve(apiTargetDir, filePath);
+            if (!safePath.startsWith(path.resolve(apiTargetDir))) {
+                return res.status(403).json({ error: "Access Denied: Path traversal detected." });
+            }
+
+            if (!fs.existsSync(safePath)) return res.json({ success: true, files: [] });
+
+            const files = fs.readdirSync(safePath);
+            res.json({ success: true, files });
+        } catch (e) {
+            console.error(`[FS] List Error:`, e);
+            res.status(500).json({ error: e.message });
+        }
+    });
+
     app.use('/api', router);
 
     const server = app.listen(port, () => {
