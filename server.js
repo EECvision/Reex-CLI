@@ -265,7 +265,10 @@ export const constructQueryParams = (payload: Record<string, any>): string => {
 
         let debounceTimer;
         watcher.on('all', (event, filePath) => {
-            if (filePath.includes('generated') || filePath.includes('config')) return;
+            if (filePath.includes('generated')) return;
+            // Ignore config files unless it's index.ts (which contains baseURL)
+            if (filePath.includes('config') && !filePath.endsWith('index.ts')) return;
+
             clearTimeout(debounceTimer);
             debounceTimer = setTimeout(regenerate, 1000);
         });
