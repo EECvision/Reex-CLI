@@ -54,6 +54,7 @@ class ProjectService {
                                     const extractMetadata = (funcNode) => {
                                         let client = "UNKNOWN_CLIENT";
                                         let url = "";
+                                        let method = "GET"; // Default
 
                                         // Look for: const url = "/path";
                                         const variableStatements = funcNode.getBody().getDescendantsOfKind(SyntaxKind.VariableStatement);
@@ -65,8 +66,10 @@ class ProjectService {
                                                     if (init.getKind() === SyntaxKind.StringLiteral || init.getKind() === SyntaxKind.NoSubstitutionTemplateLiteral) {
                                                         url = init.getLiteralValue();
                                                     } else if (init.getKind() === SyntaxKind.TemplateExpression) {
-                                                        // Handle `path${query}` -> extract "path"
-                                                        url = init.getHead().getLiteralText();
+                                                        // Handle `path${query}` -> extract full text including ${}
+                                                        // We want the raw source text of the template literal, but usually without the backticks if possible, 
+                                                        // or just the text representation. getText() includes backticks.
+                                                        url = init.getText().replace(/^`|`$/g, '');
                                                     }
                                                 }
                                             }
@@ -84,12 +87,13 @@ class ProjectService {
                                                         const expr = innerCall.getExpression(); // CLIENT.method (PropertyAccessExpression)
                                                         if (expr.getKind() === SyntaxKind.PropertyAccessExpression) {
                                                             client = expr.getExpression().getText(); // CLIENT
+                                                            method = expr.getName().toUpperCase(); // method (get, post, etc.)
                                                         }
                                                     }
                                                 }
                                             }
                                         }
-                                        return { client, url };
+                                        return { client, url, method };
                                     };
 
                                     // Expand args

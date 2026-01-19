@@ -5,6 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const chokidar = require('chokidar');
 const projectService = require('./services/project-service');
+const typeService = require('./services/type-service');
 
 // Setup upload storage (memory)
 const uploadMemory = multer({ storage: multer.memoryStorage() });
@@ -254,9 +255,27 @@ export const constructQueryParams = (payload: Record<string, any>): string => {
                 const hookService = require('./services/hook-service');
                 hookService.generateHooks(apiTargetDir, manifest);
 
+                // 3b. Generate Types Folder
+                typeService.generateTypes(apiTargetDir, manifest);
+
+                // 4. Regenerate Barrel File (src/api-services/index.ts)
+                const moduleNames = Object.keys(manifest).sort();
+                const barrelContent = `export * from "./config";
+export * from "./config/utils";
+
+${moduleNames.map((name) => `import { ${name}Api } from "./definitions/${name}";`).join('\n')}
+
+export const apiClient = {
+${moduleNames.map((name) => `  ...${name}Api,`).join('\n')}
+};
+`;
+                const barrelPath = path.join(apiTargetDir, 'src', 'api-services', 'index.ts');
+                fs.writeFileSync(barrelPath, barrelContent);
+                console.log("[WATCHER] Regenerated src/api-services/index.ts");
+
                 sendEvent(Date.now().toString(), 'project:updated', 'Project generated');
                 console.log("[WATCHER] Regeneration Complete");
-                return { success: true, manifestKeys: Object.keys(manifest) };
+                return { success: true, manifestKeys: moduleNames };
             } catch (e) {
                 console.error("[WATCHER] Regeneration Failed:", e);
                 throw e;
@@ -266,7 +285,10 @@ export const constructQueryParams = (payload: Record<string, any>): string => {
         let debounceTimer;
         watcher.on('all', (event, filePath) => {
             if (filePath.includes('generated')) return;
+            if (filePath.includes('api-services' + path.sep + 'types')) return;
             // Ignore config files unless it's index.ts (which contains baseURL)
+            // Also ignore src/api-services/index.ts (the barrel file we write) to avoid infinite loops
+            if (filePath.endsWith('src' + path.sep + 'api-services' + path.sep + 'index.ts')) return;
             if (filePath.includes('config') && !filePath.endsWith('index.ts')) return;
 
             clearTimeout(debounceTimer);
