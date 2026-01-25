@@ -56,6 +56,7 @@ function startServer(port) {
         res.setHeader('Access-Control-Allow-Credentials', 'true');
         res.flushHeaders();
 
+        console.log("[SSE] New Client Connected");
         clients.push(res);
         req.on('close', () => {
             clients = clients.filter(c => c !== res);
@@ -283,6 +284,8 @@ ${moduleNames.map((name) => `  ...${name}Api,`).join('\n')}
         };
 
         let debounceTimer;
+        let isSyncing = false;
+
         watcher.on('all', (event, filePath) => {
             if (filePath.includes('generated')) return;
             if (filePath.includes('api-services' + path.sep + 'types')) return;
@@ -291,8 +294,22 @@ ${moduleNames.map((name) => `  ...${name}Api,`).join('\n')}
             if (filePath.endsWith('src' + path.sep + 'api-services' + path.sep + 'index.ts')) return;
             if (filePath.includes('config') && !filePath.endsWith('index.ts')) return;
 
+            // Immediate Feedback: Notify client that we see changes
+            if (!isSyncing) {
+                sendEvent(Date.now().toString(), 'project:sync-start', 'Syncing changes...');
+                isSyncing = true;
+            }
+
             clearTimeout(debounceTimer);
-            debounceTimer = setTimeout(regenerate, 1000);
+            debounceTimer = setTimeout(() => {
+                try {
+                    regenerate();
+                } catch (e) {
+                    console.error("Regeneration failed:", e);
+                } finally {
+                    isSyncing = false;
+                }
+            }, 1000);
         });
 
         // Debug Endpoint to force regeneration
