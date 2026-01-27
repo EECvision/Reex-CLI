@@ -8,7 +8,6 @@ class HookService {
      * @param {Object} manifest - The JSON manifest { moduleName: { methodName: { args: [] } } }
      */
     generateHooks(targetDir, manifest) {
-        const definitionsDir = path.join(targetDir, 'src', 'api-services', 'definitions');
         const generatedDir = path.join(targetDir, 'src', 'api-services', 'generated');
 
         // Ensure output dir exists
