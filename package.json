@@ -10,13 +10,14 @@
         "start": "node bin/index.js"
     },
     "dependencies": {
-        "express": "^4.18.2",
-        "cors": "^2.8.5",
+        "axios": "^1.6.0",
         "chokidar": "^3.5.3",
+        "commander": "^11.0.0",
+        "cors": "^2.8.5",
+        "dotenv": "^17.2.3",
+        "express": "^4.18.2",
         "multer": "^1.4.5-lts.1",
         "open": "^8.4.2",
-        "commander": "^11.0.0",
-        "axios": "^1.6.0",
         "ts-morph": "^20.0.0"
     }
 }
