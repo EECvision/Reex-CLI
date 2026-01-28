@@ -73,19 +73,9 @@ function startServer(port) {
     // ---------------------------------------------------------
     let watcher = null;
     if (apiTargetDir) {
-        const definitionsDir = path.join(apiTargetDir, 'src', 'api-services', 'definitions');
-        const configIndex = path.join(apiTargetDir, 'src', 'api-services', 'config', 'index.ts');
-        const envFile = path.join(apiTargetDir, '.env');
-        const envLocalFile = path.join(apiTargetDir, '.env.local');
-
-        console.log(`[WATCHER] Monitoring specific paths:`);
-        console.log(`  - ${definitionsDir}`);
-        console.log(`  - ${configIndex}`);
-        console.log(`  - ${envFile}`);
-        console.log(`  - ${envLocalFile}`);
-
-        watcher = chokidar.watch([definitionsDir, configIndex, envFile, envLocalFile], {
-            ignored: /(^|[\/\\])\.(?!env)/, // Ignore dotfiles EXCEPT .env*
+        console.log(`[WATCHER] Monitoring ${apiTargetDir}`);
+        watcher = chokidar.watch(apiTargetDir, {
+            ignored: /(^|[\/\\])\../,
             persistent: true,
             ignoreInitial: true
         });
@@ -156,7 +146,7 @@ const createClient = (path: string = ""): AxiosInstance => {
 
 // 2. Exported Instances
 export const BASE_CLIENT = createClient();
-export const V1_CLIENT = createClient("/v1");
+export const BASE_CLIENT_V1 = createClient("/v1");
 export const AUTH_CLIENT = createClient("/auth");
 
 `;
@@ -280,9 +270,12 @@ ${moduleNames.map((name) => `  ...${name}Api,`).join('\n')}
         let isSyncing = false;
 
         watcher.on('all', (event, filePath) => {
-            // We are now watching specific paths, so we don't need aggressive filtering.
-            // But we should still be careful about 'generated' if it somehow ends up in definitions (unlikely but safe)
             if (filePath.includes('generated')) return;
+            if (filePath.includes('api-services' + path.sep + 'types')) return;
+            // Ignore config files unless it's index.ts (which contains baseURL)
+            // Also ignore src/api-services/index.ts (the barrel file we write) to avoid infinite loops
+            if (filePath.endsWith('src' + path.sep + 'api-services' + path.sep + 'index.ts')) return;
+            if (filePath.includes('config') && !filePath.endsWith('index.ts')) return;
 
             // Immediate Feedback: Notify client that we see changes
             if (!isSyncing) {
