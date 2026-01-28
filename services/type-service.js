@@ -58,12 +58,16 @@ function generateTypes(targetDir, manifest) {
       if (typeFileExists) {
         const current = fs.readFileSync(typeFilePath, 'utf8');
 
-        // If content matches default (unknown), no need to write
+        // 1. If content matches default (unknown), no need to write (Optimization)
         if (current.trim() === content.trim()) return;
 
-        // SPECIAL LOGIC: If it DOESN'T match default (unknown), and NO manual flag, 
-        // we overwrite it. This resets old interfaces to unknown.
-        // If manual flag exists, we returned above already.
+        // 2. Logic Change: If it DOESN'T match default, it means the user (or legacy code) 
+        // changed it to something else (e.g. defined a Type). 
+        // We MUST preserve that change.
+        if (current.trim().length > 0) {
+          // console.log(`[TYPES] Skipped (user modified): ${moduleName}/${typeFileName}`);
+          return;
+        }
       }
 
       fs.writeFileSync(typeFilePath, content, 'utf8');

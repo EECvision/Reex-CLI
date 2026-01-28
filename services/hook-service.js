@@ -1,205 +1,295 @@
-const fs = require('fs');
-const path = require('path');
+const fs = require("fs");
+const path = require("path");
 
 class HookService {
-    /**
-     * Generates React Query hooks based on the API Manifest.
-     * @param {string} targetDir - The root project directory
-     * @param {Object} manifest - The JSON manifest { moduleName: { methodName: { args: [] } } }
-     */
-    generateHooks(targetDir, manifest) {
-        const generatedDir = path.join(targetDir, 'src', 'api-services', 'generated');
+  generateHooks(targetDir, manifest) {
+    const generatedDir = path.join(
+      targetDir,
+      "src",
+      "api-services",
+      "generated"
+    );
 
-        // Ensure output dir exists
-        if (fs.existsSync(generatedDir)) {
-            // Clean up old files? Or just overwrite. 
-            // Better to clean to remove stale modules.
-            try {
-                fs.readdirSync(generatedDir).forEach(f => {
-                    if (f.endsWith('.ts')) fs.unlinkSync(path.join(generatedDir, f));
-                });
-            } catch (e) {
-                console.warn("[HookService] Failed to clean generated dir:", e);
-            }
-        } else {
-            fs.mkdirSync(generatedDir, { recursive: true });
-        }
+    // Clean generated directory safely
+    if (fs.existsSync(generatedDir)) {
+      fs.rmSync(generatedDir, { recursive: true, force: true });
+    }
+    fs.mkdirSync(generatedDir, { recursive: true });
 
-        const modules = Object.keys(manifest);
-        const hookFrequency = new Map(); // HookName -> Count
+    const modules = Object.keys(manifest);
+    const hookFrequency = new Map();
 
-        // Phase 1: Analyze Hooks for Collisions
-        modules.forEach(moduleName => {
-            const methods = Object.keys(manifest[moduleName]);
-            methods.forEach(method => {
-                const hookName = this.getHookName(method);
-                hookFrequency.set(hookName, (hookFrequency.get(hookName) || 0) + 1);
-            });
-        });
+    // Phase 1: Detect collisions
+    modules.forEach((moduleName) => {
+      Object.keys(manifest[moduleName]).forEach((method) => {
+        const hook = this.getHookName(method);
+        hookFrequency.set(hook, (hookFrequency.get(hook) || 0) + 1);
+      });
+    });
 
-        const exportLines = [];
+    const exportLines = [];
 
-        // Phase 2: Generate Files
-        modules.forEach(moduleName => {
-            const methods = manifest[moduleName];
-            const methodNames = Object.keys(methods);
+    // Phase 2: Generate module files
+    modules.forEach((moduleName) => {
+      const methods = manifest[moduleName];
+      const methodNames = Object.keys(methods);
+      const keyFactoryName = `${moduleName}Keys`;
 
-            const hooks = [];
-            let usedQuery = false;
-            let usedMutation = false;
+      let usedQuery = false;
+      let usedMutation = false;
 
-            // Generate content for each method
-            methodNames.forEach(method => {
-                const isQuery = method.startsWith('get_');
-                if (isQuery) usedQuery = true;
-                else usedMutation = true;
+      methodNames.forEach((method) => {
+        if (method.startsWith("get_")) usedQuery = true;
+        else usedMutation = true;
+      });
 
-                const args = methods[method].args || [];
-                const hookContent = this.toHookContent(method, args, moduleName);
-                hooks.push(hookContent);
-            });
+      const keyFactory = this.generateKeyFactory(
+        moduleName,
+        methodNames,
+        methods
+      );
 
-            // File Structure
-            const fileContent = `// Generated file - DO NOT EDIT
-// This file contains React Query hooks for ${moduleName} API
+      const hooks = methodNames.map((method) => {
+        return this.toHookContent(
+          method,
+          methods[method].args || [],
+          moduleName,
+          keyFactoryName
+        );
+      });
 
+      const tanstackImports = [];
+      if (usedMutation) tanstackImports.push("useQueryClient");
+      const tanstackImportLine = tanstackImports.length
+        ? `import { ${tanstackImports.join(", ")} } from "@tanstack/react-query";`
+        : "";
+
+      const commonImports = [
+        usedQuery && "useApiQuery",
+        usedMutation && "useApiMutation",
+      ]
+        .filter(Boolean)
+        .join(", ");
+
+      // 1. Generate the raw content first
+      const rawContent = `// Generated file - DO NOT EDIT
+${tanstackImportLine}
 import { ${moduleName}Api } from "../definitions/${moduleName}";
-import { ${usedQuery ? 'useApiQuery, ' : ''}${usedMutation ? 'useApiMutation' : ''} } from ".";
-${!usedQuery && !usedMutation ? '' : ''}
+${commonImports ? `import { ${commonImports} } from ".";` : ""}
 
-${hooks.join('\n\n')}
+${keyFactory}
+
+${hooks.join("\n\n")}
 `;
 
-            // Write Module File
-            const pascalModule = moduleName.charAt(0).toUpperCase() + moduleName.slice(1);
-            const fileName = `use${pascalModule}Queries.ts`;
-            fs.writeFileSync(path.join(generatedDir, fileName), fileContent.replace(/, }/g, ' }'));
+      // 2. Dynamically add the lint disable comment
+      const fileContent = this.addLintDisableIfNeeded(rawContent);
 
-            // Prepare Index Export
-            // Check for collisions in THIS module
-            let hasConflict = false;
-            const moduleHooks = methodNames.map(m => this.getHookName(m));
+      const pascalModule =
+        moduleName.charAt(0).toUpperCase() + moduleName.slice(1);
+      const fileName = `use${pascalModule}Queries.ts`;
+      fs.writeFileSync(path.join(generatedDir, fileName), fileContent);
 
-            for (const hook of moduleHooks) {
-                if (hookFrequency.get(hook) > 1) {
-                    hasConflict = true;
-                    break;
-                }
-            }
+      // Index exports
+      const moduleHooks = methodNames.map((m) => this.getHookName(m));
+      const hasConflict = moduleHooks.some((h) => hookFrequency.get(h) > 1);
 
-            if (hasConflict) {
-                // Alias exports
-                const aliasedExports = moduleHooks.map(hook => {
-                    const count = hookFrequency.get(hook);
-                    if (count > 1) {
-                        const aliased = hook.replace("use", `use${pascalModule}`);
-                        return `  ${hook} as ${aliased},`;
-                    }
-                    return `  ${hook},`;
-                }).join('\n');
-                exportLines.push(`export {\n${aliasedExports}\n} from "./use${pascalModule}Queries";`);
-            } else {
-                exportLines.push(`export * from "./use${pascalModule}Queries";`);
-            }
+      if (hasConflict) {
+        exportLines.push(
+          `export {\n${moduleHooks
+            .map((h) =>
+              hookFrequency.get(h) > 1
+                ? `  ${h} as ${h.replace("use", `use${pascalModule}`)},`
+                : `  ${h},`
+            )
+            .join("\n")}\n} from "./use${pascalModule}Queries";`
+        );
+      } else {
+        exportLines.push(`export * from "./use${pascalModule}Queries";`);
+      }
+    });
+
+    this.generateIndexFile(generatedDir, exportLines);
+  }
+
+  // --- NEW HELPER ---
+  addLintDisableIfNeeded(content) {
+    // Regex matches the word "any" (boundary \b) to avoid matching "many", "company", etc.
+    if (/\bany\b/.test(content)) {
+      return `/* eslint-disable @typescript-eslint/no-explicit-any */\n${content}`;
+    }
+    return content;
+  }
+
+  getSafeArgName(name) {
+    if (/^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(name)) return name;
+    return "params";
+  }
+
+  generateKeyFactory(moduleName, methodNames, methods) {
+    const lines = [
+      `export const ${moduleName}Keys = {`,
+      `  all: ["${moduleName}"] as const,`,
+    ];
+
+    methodNames
+      .filter((m) => m.startsWith("get_"))
+      .forEach((method) => {
+        const args = methods[method].args || [];
+
+        if (!args.length) {
+          lines.push(
+            `  ${method}: () => [...${moduleName}Keys.all, "${method}"] as const,`
+          );
+          return;
+        }
+
+        const sanitizedArgs = args.map((a) => ({
+          ...a,
+          name: this.getSafeArgName(a.name),
+        }));
+
+        const paramType = this.buildType({
+          isObject: true,
+          properties: sanitizedArgs,
         });
 
-        // Generate index.ts
-        const indexContent = `import { useMutation, useQuery } from "@tanstack/react-query";
+        lines.push(
+          `  ${method}: (params: ${paramType}) => [...${moduleName}Keys.all, "${method}", params] as const,`
+        );
+      });
+
+    lines.push("};");
+    return lines.join("\n");
+  }
+
+  getHookName(methodName) {
+    const isQuery = methodName.startsWith("get_");
+    const [prefix, ...rest] = methodName.split("_");
+    const suffix = rest
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join("");
+    const cleanPrefix = prefix
+      ? prefix.charAt(0).toUpperCase() + prefix.slice(1)
+      : "";
+    return `use${cleanPrefix}${suffix}${isQuery ? "Query" : "Mutation"}`;
+  }
+
+  toHookContent(methodName, args, moduleName, keyFactoryName) {
+    const isQuery = methodName.startsWith("get_");
+    const hookName = this.getHookName(methodName);
+
+    const sanitizedArgs = (args || []).map((a) => ({
+      ...a,
+      name: this.getSafeArgName(a.name),
+    }));
+
+    if (isQuery) {
+      if (!sanitizedArgs.length) {
+        return `export const ${hookName} = (
+  options?: Parameters<typeof useApiQuery>[2]
+) =>
+  useApiQuery(
+    ${keyFactoryName}.${methodName}(),
+    () => ${moduleName}Api.${methodName}(),
+    options
+  );`;
+      }
+
+      const paramType = this.buildType({
+        isObject: true,
+        properties: sanitizedArgs,
+      });
+
+      const apiArgs = sanitizedArgs
+        .map((arg) => `params.${arg.name}`)
+        .join(", ");
+
+      return `export const ${hookName} = (
+  params: ${paramType},
+  options?: Parameters<typeof useApiQuery>[2]
+) =>
+  useApiQuery(
+    ${keyFactoryName}.${methodName}(params),
+    () => ${moduleName}Api.${methodName}(${apiArgs}),
+    options
+  );`;
+    }
+
+    // Mutation
+    // Note: The 'as any' cast here will trigger the lint disable automatically
+    return `export const ${hookName} = (
+  options?: Omit<NonNullable<Parameters<typeof useApiMutation>[1]>, 'mutationFn'>
+) => {
+  const queryClient = useQueryClient();
+
+  return useApiMutation(${moduleName}Api.${methodName}, {
+    ...options,
+    onSuccess: (data, variables, context) => {
+      queryClient.invalidateQueries({ queryKey: ${keyFactoryName}.all });
+      (options?.onSuccess as any)?.(data, variables, context);
+    },
+  });
+};`;
+  }
+
+  buildType(param) {
+    if (!param) return "any";
+    if (param.type && !param.isObject) return param.type;
+    if (param.isObject && param.properties) {
+      return `{ ${param.properties
+        .map(
+          (p) =>
+            `${p.name}${p.isOptional ? "?" : ""}: ${this.buildType(p)}`
+        )
+        .join("; ")} }`;
+    }
+    return "any";
+  }
+
+  generateIndexFile(generatedDir, exportLines) {
+    const rawContent = `// Generated file - DO NOT EDIT
+import {
+  QueryKey,
+  useMutation,
+  useQuery,
+  UseMutationOptions,
+  UseQueryOptions,
+} from "@tanstack/react-query";
 
 export const useApiMutation = <TData, TVariables>(
-  mutationFn: (data: TVariables) => Promise<TData | undefined>
+  mutationFn: (variables: TVariables) => Promise<TData>,
+  options?: UseMutationOptions<TData, unknown, TVariables>
 ) =>
-  useMutation < TData | undefined, unknown, TVariables> ({
+  useMutation({
     mutationFn,
-  });
-
-export const useApiQuery = <TData>(
-  queryKey: string[],
-  queryFn: () => Promise<TData | undefined>,
-  options?: {
-    enabled ?: boolean;
-  staleTime?: number;
-  cacheTime?: number;
-  refetchOnWindowFocus?: boolean;
-  }
-) =>
-  useQuery<TData | undefined>({
-    queryKey,
-    queryFn,
     ...options,
   });
 
-${exportLines.join('\n')}
+export const useApiQuery = <TData>(
+  queryKey: QueryKey,
+  queryFn: () => Promise<TData>,
+  options?: Omit<
+    UseQueryOptions<TData, unknown, TData, QueryKey>,
+    "queryKey" | "queryFn"
+  >
+) =>
+  useQuery({
+    queryKey,
+    queryFn,
+    refetchOnWindowFocus: false,
+    retry: 1,
+    ...options,
+  });
+
+${exportLines.join("\n")}
 `;
-        fs.writeFileSync(path.join(generatedDir, 'index.ts'), indexContent);
-        console.log(`[HookService] Generated hooks in ${generatedDir}`);
-    }
 
-    getHookName(methodName) {
-        const isQuery = methodName.startsWith("get_");
-        const methodPrefix = methodName.split("_")[0];
+    // Apply the check to index file as well
+    const content = this.addLintDisableIfNeeded(rawContent);
 
-        // e.g. get_users -> useUsersQuery
-        // post_login -> useLoginMutation
-        const suffix = methodName
-            .split("_")
-            .slice(1)
-            .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-            .join("");
-
-        return `use${methodPrefix.charAt(0).toUpperCase()}${methodPrefix.slice(1)}${suffix}${isQuery ? "Query" : "Mutation"}`;
-    }
-
-    toHookContent(methodName, args, moduleName) {
-        const isQuery = methodName.startsWith("get_");
-        const hookName = this.getHookName(methodName);
-
-        // Type generation is tricky without TS compiler API.
-        // But the previous script used `toTypeString`.
-        // The manifest args already contain `type` string from my `project-service`.
-        // So I can reconstruct it.
-
-        if (isQuery) {
-            if (args.length > 0) {
-                const paramsType = this.buildType(args[0]);
-                return `export const ${hookName} = (
-  params: ${paramsType},
-  options?: Parameters<typeof useApiQuery>[2]
-) =>
-  useApiQuery(
-    ["${methodName}", JSON.stringify(params)],
-    () => ${moduleName}Api.${methodName}(params),
-    options
-  );`;
-            } else {
-                return `export const ${hookName} = (
-  options?: Parameters<typeof useApiQuery>[2]
-) =>
-  useApiQuery(
-    ["${methodName}"],
-    ${moduleName}Api.${methodName},
-    options
-  );`;
-            }
-        } else {
-            return `export const ${hookName} = () =>
-  useApiMutation(${moduleName}Api.${methodName});`;
-        }
-    }
-
-    buildType(param) {
-        if (!param) return "any";
-        if (param.type && !param.isObject) return param.type;
-
-        if (param.isObject && param.properties) {
-            const inner = param.properties.map(p => {
-                const nested = this.buildType(p);
-                return `${p.name}${p.isOptional ? "?" : ""}: ${nested}`;
-            }).join('; ');
-            return `{ ${inner} }`;
-        }
-        return "any";
-    }
+    fs.writeFileSync(path.join(generatedDir, "index.ts"), content);
+  }
 }
 
 module.exports = new HookService();

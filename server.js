@@ -97,87 +97,58 @@ function startServer(port) {
 
                 // index.ts
                 if (!fs.existsSync(indexPath)) {
-                    const indexContent = `/* eslint-disable @typescript-eslint/no-explicit-any */
+                    const indexContent = `
+import axios, {
+  AxiosInstance,
+  InternalAxiosRequestConfig,
+  AxiosResponse,
+  AxiosError,
+} from "axios";
 
-// index.ts
+const baseURL =
+  process.env.NEXT_PUBLIC_API_BASE_URL || "https://localhost:3000/api";
 
-import axios, { AxiosResponse, AxiosError } from "axios";
-
-// ============================================================================
-// TYPE DEFINITIONS
-// ============================================================================
-
-export interface ApiError {
-  message: string;
-  code?: string;
-  statusCode?: number;
-}
-
-export interface ApiResponse<T> {
-  data?: T;
-  error?: ApiError;
-}
-
-// ============================================================================
-// REQUEST CONFIG
-// ============================================================================
-
-export const baseURL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000/api";
-
-export const BASE_CLIENT = axios.create({
+const DEFAULT_CONFIG = {
   baseURL,
   timeout: 30000,
-});
+  headers: { "Content-Type": "application/json" },
+};
 
-export const BASE_CLIENT_V1 = axios.create({
-  baseURL: baseURL + "/v1",
-  timeout: 30000,
-});
+// 1. Create a factory function to avoid repeating interceptor logic
+const createClient = (path: string = ""): AxiosInstance => {
+  const client = axios.create({
+    ...DEFAULT_CONFIG,
+    baseURL: path ? \`\${baseURL}\${path}\` : baseURL,
+  });
 
-export const AUTH_CLIENT = axios.create({
-  baseURL: baseURL + "/auth",
-  timeout: 30000,
-});
-
-// ============================================================================
-// REQUEST INTERCEPTOR (attach token)
-// ============================================================================
-
-const attachTokenInterceptor = (client: any) => {
-  client.interceptors.request.use((config: any) => {
-    const token = ""; // READ FROM STATE
-    if (token) {
-      config.headers = config.headers ?? {};
-      config.headers.Authorization = \`Bearer \${token}\`;
+  // Request Interceptor: Auth
+  client.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+    if (typeof window !== "undefined") {
+      // You might pull this from a redux or zustand store or a cookie helper
+      const token = localStorage.getItem("token");
+      if (token && config.headers) {
+        config.headers.Authorization = \`Bearer \${token}\`;
+      }
     }
     return config;
   });
-};
 
-attachTokenInterceptor(BASE_CLIENT);
-attachTokenInterceptor(BASE_CLIENT_V1);
-attachTokenInterceptor(AUTH_CLIENT);
-
-// ============================================================================
-// RESPONSE INTERCEPTOR (handle 401)
-// ============================================================================
-
-const attachErrorInterceptor = (client: any) => {
+  // Response Interceptor: Error Handling
   client.interceptors.response.use(
-    (res: AxiosResponse) => res,
-    async (err: AxiosError) => {
-      if (err.response?.status === 401) {
-        console.warn("[AUTH] Unauthorized → Token cleared.");
-      }
-      return Promise.reject(err);
-    }
+    (response: AxiosResponse) => response,
+    (error: AxiosError) => {
+      return Promise.reject(error);
+    },
   );
+
+  return client;
 };
 
-attachErrorInterceptor(BASE_CLIENT);
-attachErrorInterceptor(BASE_CLIENT_V1);
-attachErrorInterceptor(AUTH_CLIENT);
+// 2. Exported Instances
+export const BASE_CLIENT = createClient();
+export const BASE_CLIENT_V1 = createClient("/v1");
+export const AUTH_CLIENT = createClient("/auth");
+
 `;
                     fs.writeFileSync(indexPath, indexContent);
                     console.log("[WATCHER] Scaffoled config/index.ts");
@@ -185,63 +156,75 @@ attachErrorInterceptor(AUTH_CLIENT);
 
                 // utils.ts
                 if (!fs.existsSync(utilsPath)) {
-                    const utilsContent = `/* eslint-disable @typescript-eslint/no-explicit-any */
+                    const utilsContent = `
+import { AxiosResponse, isAxiosError } from "axios";
 
-//utils.ts
+export interface ApiError {
+  message: string;
+  code?: string;
+  statusCode?: number;
+  originalError?: unknown; // Optional: useful for debugging
+}
 
-import { AxiosResponse } from "axios";
-import { ApiError, ApiResponse } from ".";
+export interface ApiResponse<T> {
+  data?: T;
+  error?: ApiError;
+}
 
-// ============================================================================
-// ERROR HANDLING
-// ============================================================================
-
-export const handleError = (error: any, label?: string): ApiError => {
-  const message =
-    error?.response?.data?.msg ||
-    error?.response?.data?.message ||
-    error?.response?.data?.error ||
-    error?.message ||
-    "An unexpected error occurred";
-
-  const apiError: ApiError = {
-    message,
-    code: error?.response?.data?.code,
-    statusCode: error?.response?.status,
-  };
-
-  console.error(\`[API ERROR - \${label}]\`, apiError);
-  return apiError;
-};
-
-// ============================================================================
-// API CALL WRAPPER
-// ============================================================================
-
+/**
+ * Standard API Wrapper
+ */
 export const handleApiCall = async <T>(
   fn: () => Promise<AxiosResponse<T>>,
-  label: string
+  label: string,
 ): Promise<ApiResponse<T>> => {
   try {
     const res = await fn();
     return { data: res.data };
-  } catch (err: any) {
+  } catch (err: unknown) {
     return { error: handleError(err, label) };
   }
 };
 
-// ============================================================================
-// QUERY UTIL
-// ============================================================================
+export const handleError = (error: unknown, label: string): ApiError => {
+  let message = "An unexpected error occurred";
+  let code: string | undefined;
+  let statusCode: number | undefined;
 
-export const constructQueryParams = (payload: Record<string, any>): string => {
-  const query = Object.entries(payload)
-    .filter(([, v]) => v !== undefined && v !== null && v !== "")
-    .map(
-      ([k, v]) => \`\${encodeURIComponent(k)}=\${encodeURIComponent(String(v))}\`
-    )
-    .join("&");
+  if (isAxiosError(error)) {
+    const data = error.response?.data;
+    message = data?.message || error.message || message;
+    code = data?.code;
+    statusCode = error.response?.status;
+  } else if (error instanceof Error) {
+    message = error.message;
+  }
 
+  console.error(\`[API ERROR - \${label}]\`, { message, code, statusCode });
+  return { message, code, statusCode };
+};
+
+/**
+ * Handle query params
+ */
+export const constructQueryParams = (
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  payload: Record<string, any>,
+): string => {
+  const params = new URLSearchParams();
+
+  Object.entries(payload).forEach(([k, v]) => {
+    if (
+      v !== undefined &&
+      v !== null &&
+      v !== "" &&
+      !(Array.isArray(v) && v.length === 0)
+    ) {
+      params.append(k, String(v));
+    }
+  });
+
+  const query = params.toString();
   return query ? \`?\${query}\` : "";
 };
 `;
