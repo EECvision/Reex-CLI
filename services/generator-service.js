@@ -8,45 +8,45 @@ const sseService = require('./sse-service');
 
 class GeneratorService {
 
-    /**
-     * Regenerates the API project structure:
-     * 1. Scaffolds config files (constants, core, utils)
-     * 2. Generates Manifest from definitions
-     * 3. Generates Hooks
-     * 4. Generates Types
-     * 5. Prunes unused clients
-     * 6. Generates index barrel
-     * 
-     * @param {string} apiTargetDir 
-     */
-    regenerate(apiTargetDir) {
-        const definitionsDir = path.join(apiTargetDir, 'src', 'api-services', 'definitions');
-        const configDir = path.join(apiTargetDir, 'src', 'api-services', 'config');
-        const indexTimePath = path.join(configDir, 'index.ts');
-        const constantsPath = path.join(configDir, 'constants.ts');
-        const corePath = path.join(configDir, 'core.ts');
-        const clientsPath = path.join(configDir, 'clients.ts');
-        const utilsPath = path.join(configDir, 'utils.ts');
+  /**
+   * Regenerates the API project structure:
+   * 1. Scaffolds config files (constants, core, utils)
+   * 2. Generates Manifest from definitions
+   * 3. Generates Hooks
+   * 4. Generates Types
+   * 5. Prunes unused clients
+   * 6. Generates index barrel
+   * 
+   * @param {string} apiTargetDir 
+   */
+  regenerate(apiTargetDir) {
+    const definitionsDir = path.join(apiTargetDir, 'src', 'api-services', 'definitions');
+    const configDir = path.join(apiTargetDir, 'src', 'api-services', 'config');
+    const indexTimePath = path.join(configDir, 'index.ts');
+    const constantsPath = path.join(configDir, 'constants.ts');
+    const corePath = path.join(configDir, 'core.ts');
+    const clientsPath = path.join(configDir, 'clients.ts');
+    const utilsPath = path.join(configDir, 'utils.ts');
 
-        try {
-            console.log("[Generator] Regenerating Manifest & Hooks...");
+    try {
+      console.log("[Generator] Regenerating Manifest & Hooks...");
 
-            if (!fs.existsSync(configDir)) {
-                fs.mkdirSync(configDir, { recursive: true });
-            }
+      if (!fs.existsSync(configDir)) {
+        fs.mkdirSync(configDir, { recursive: true });
+      }
 
-            // 1. constants.ts - Managed by Bridge (Base URL)
-            if (!fs.existsSync(constantsPath)) {
-                const constantsContent = `
+      // 1. constants.ts - Managed by Bridge (Base URL)
+      if (!fs.existsSync(constantsPath)) {
+        const constantsContent = `
 export const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.example.com";
 `;
-                fs.writeFileSync(constantsPath, constantsContent);
-                console.log("[Generator] Scaffoled config/constants.ts");
-            }
+        fs.writeFileSync(constantsPath, constantsContent);
+        console.log("[Generator] Scaffoled config/constants.ts");
+      }
 
-            // 2. core.ts - User Managed (Interceptors), imports constants
-            if (!fs.existsSync(corePath)) {
-                const coreContent = `
+      // 2. core.ts - User Managed (Interceptors), imports constants
+      if (!fs.existsSync(corePath)) {
+        const coreContent = `
 import axios, {
   AxiosInstance,
   InternalAxiosRequestConfig,
@@ -94,35 +94,35 @@ export const createClient = (path: string = ""): AxiosInstance => {
 // 2. Base Client (Core Identity)
 export const BASE_CLIENT = createClient();
 `;
-                fs.writeFileSync(corePath, coreContent);
-                console.log("[Generator] Scaffoled config/core.ts");
-            }
+        fs.writeFileSync(corePath, coreContent);
+        console.log("[Generator] Scaffoled config/core.ts");
+      }
 
-            // clients.ts - SCAFFOLD ONLY (Generator manages this)
-            if (!fs.existsSync(clientsPath)) {
-                const clientsContent = `
+      // clients.ts - SCAFFOLD ONLY (Generator manages this)
+      if (!fs.existsSync(clientsPath)) {
+        const clientsContent = `
 import { createClient } from "./core";
 
 // Auto-generated clients will be added here
 `;
-                fs.writeFileSync(clientsPath, clientsContent);
-                console.log("[Generator] Scaffoled config/clients.ts");
-            }
+        fs.writeFileSync(clientsPath, clientsContent);
+        console.log("[Generator] Scaffoled config/clients.ts");
+      }
 
 
-            // index.ts - BARREL ONLY (Managed by Bridge)
-            const indexContent = `
+      // index.ts - BARREL ONLY (Managed by Bridge)
+      const indexContent = `
 export * from "./core";
 export * from "./clients";
 export * from "./utils";
 `;
-            fs.writeFileSync(indexTimePath, indexContent);
-            console.log("[Generator] Updated config/index.ts");
+      fs.writeFileSync(indexTimePath, indexContent);
+      console.log("[Generator] Updated config/index.ts");
 
 
-            // utils.ts
-            if (!fs.existsSync(utilsPath)) {
-                const utilsContent = `
+      // utils.ts
+      if (!fs.existsSync(utilsPath)) {
+        const utilsContent = `
 import { AxiosResponse, isAxiosError } from "axios";
 
 export interface ApiError {
@@ -194,25 +194,25 @@ export const constructQueryParams = (
   return query ? \`?\${query}\` : "";
 };
 `;
-                fs.writeFileSync(utilsPath, utilsContent);
-                console.log("[Generator] Scaffoled config/utils.ts");
-            }
+        fs.writeFileSync(utilsPath, utilsContent);
+        console.log("[Generator] Scaffoled config/utils.ts");
+      }
 
-            // 2. Generate Manifest
-            const manifest = projectService.generateManifest(definitionsDir);
+      // 2. Generate Manifest
+      const manifest = projectService.generateManifest(definitionsDir);
 
-            // 3. Generate Hooks
-            hookService.generateHooks(apiTargetDir, manifest);
+      // 3. Generate Hooks
+      hookService.generateHooks(apiTargetDir, manifest);
 
-            // 3b. Generate Types Folder
-            typeService.generateTypes(apiTargetDir, manifest);
+      // 3b. Generate Types Folder
+      typeService.generateTypes(apiTargetDir, manifest);
 
-            // 3c. Sync Clients (Auto-Prune unused clients)
-            configService.updateClientsFile(apiTargetDir, {}, { prune: true });
+      // 3c. Sync Clients (Auto-Prune unused clients)
+      configService.updateClientsFile(apiTargetDir, {}, { prune: true });
 
-            // 4. Regenerate Barrel File (src/api-services/index.ts)
-            const moduleNames = Object.keys(manifest).sort();
-            const barrelContent = `export * from "./config";
+      // 4. Regenerate Barrel File (src/api-services/index.ts)
+      const moduleNames = Object.keys(manifest).sort();
+      const barrelContent = `export * from "./config";
 export * from "./config/utils";
 
 ${moduleNames.map((name) => `import { ${name}Api } from "./definitions/${name}";`).join('\n')}
@@ -221,18 +221,18 @@ export const apiClient = {
 ${moduleNames.map((name) => `  ...${name}Api,`).join('\n')}
 };
 `;
-            const barrelPath = path.join(apiTargetDir, 'src', 'api-services', 'index.ts');
-            fs.writeFileSync(barrelPath, barrelContent);
-            console.log("[Generator] Regenerated src/api-services/index.ts");
+      const barrelPath = path.join(apiTargetDir, 'src', 'api-services', 'index.ts');
+      fs.writeFileSync(barrelPath, barrelContent);
+      console.log("[Generator] Regenerated src/api-services/index.ts");
 
-            sseService.broadcast(Date.now().toString(), 'project:updated', 'Project generated');
-            console.log("[Generator] Regeneration Complete");
-            return { success: true, manifestKeys: moduleNames };
-        } catch (e) {
-            console.error("[Generator] Regeneration Failed:", e);
-            throw e;
-        }
+      sseService.broadcast(Date.now().toString(), 'project:updated', 'Project generated');
+      console.log("[Generator] Regeneration Complete");
+      return { success: true, manifestKeys: moduleNames };
+    } catch (e) {
+      console.error("[Generator] Regeneration Failed:", e);
+      throw e;
     }
+  }
 }
 
 module.exports = new GeneratorService();

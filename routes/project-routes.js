@@ -98,9 +98,9 @@ export const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL || "${baseUrl}";
             // We rely on the File Watcher to detect the subsequent write to 'definitions/' or 'constants.ts' to trigger regeneration.
             // generatorService.regenerate(apiTargetDir);
 
-            // Event is broadcasted by regenerate()
+            // Event is broadcasted by regenerate() (via watcher)
             // But we can also send specific one. server.js had 'Configuration updated'
-            sseService.broadcast(Date.now().toString(), 'project:updated', 'Configuration updated');
+            // sseService.broadcast(Date.now().toString(), 'project:updated', 'Configuration updated');
 
             res.json({ success: true });
         } catch (e) {
@@ -117,7 +117,7 @@ export const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL || "${baseUrl}";
 
             generatorService.regenerate(apiTargetDir);
 
-            sseService.broadcast(Date.now().toString(), 'project:updated', 'Clients synchronized');
+            // sseService.broadcast(Date.now().toString(), 'project:updated', 'Clients synchronized');
 
             res.json({ success: true, activeClients: clientKeys });
         } catch (e) {
