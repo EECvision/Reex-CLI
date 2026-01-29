@@ -88,11 +88,9 @@ export const createClient = (path: string = ""): AxiosInstance => {
     },
   );
 
+
   return client;
 };
-
-// 2. Base Client (Core Identity)
-export const BASE_CLIENT = createClient();
 `;
         fs.writeFileSync(corePath, coreContent);
         console.log("[Generator] Scaffoled config/core.ts");

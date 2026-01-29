@@ -65,7 +65,7 @@ class ConfigService {
         }
 
         // Re-generate File Content
-        let newContent = `import { createClient } from "./core";\n\n`;
+        let newContent = `import { createClient } from "./core";\n\nexport const BASE_CLIENT = createClient();\n`;
         const sortedKeys = Object.keys(mergedClients).sort();
 
         if (sortedKeys.length === 0) {

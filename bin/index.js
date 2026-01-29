@@ -29,8 +29,8 @@ program
 
         // Open the Hosted UI
         // We pass the local port so the UI knows where to connect
-        // const clientUrl = `https://reex-api-client.vercel.app/?localPort=${port}`;
-        const clientUrl = `http://localhost:3000/?localPort=${port}`;
+        const clientUrl = `https://reex-api-client.vercel.app/?localPort=${port}`;
+        // const clientUrl = `http://localhost:3000/?localPort=${port}`;
 
         console.log(`\n🌐 Opening UI: ${clientUrl}`);
         await open(clientUrl);
