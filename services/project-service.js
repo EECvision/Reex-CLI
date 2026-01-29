@@ -128,146 +128,103 @@ class ProjectService {
     }
 
     /**
-     * Reads the project config to get BaseURLs.
+     * Reads the project config directly from core.ts and clients.ts.
      * @param {string} configDir - Path to src/api-services/config
      */
     getProjectConfig(configDir) {
-        if (!fs.existsSync(configDir)) return {};
-        const filePath = path.join(configDir, "index.ts");
-        if (!fs.existsSync(filePath)) return {};
+        if (!fs.existsSync(configDir)) return { baseURL: "http://localhost:3000/api", clients: {}, clientPrefixes: {} };
+        const corePath = path.join(configDir, "core.ts");
+        const clientsPath = path.join(configDir, "clients.ts");
 
-        const project = new Project({ skipAddingFilesFromTsConfig: true });
-        const sourceFile = project.addSourceFileAtPath(filePath);
         const config = { clients: {}, clientPrefixes: {} };
+        const project = new Project({ skipAddingFilesFromTsConfig: true });
 
-        // 0. Load Environment Variables from Project Root
-        // assumes configDir is src/api-services/config, so project root is ../../../
-        // Adjust this relative path logic based on your structure.
-        // If configDir is 'some/path/src/api-services/config', root is 3 levels up.
-        const projectRoot = path.resolve(configDir, "../../../");
-        const envConfig = {};
+        // 1. Get BaseURL from core.ts
+        if (fs.existsSync(corePath)) {
+            const sourceFile = project.addSourceFileAtPath(corePath);
 
-        // Load .env.local first (higher priority), then .env
-        [".env", ".env.local"].forEach(envFile => {
-            const envPath = path.join(projectRoot, envFile);
-            if (fs.existsSync(envPath)) {
-                const parsed = dotenv.parse(fs.readFileSync(envPath));
-                Object.assign(envConfig, parsed);
-            }
-        });
-
-        const resolveValue = (node) => {
-            if (!node) return undefined;
-
-            // String Literal
-            if (node.getKind() === SyntaxKind.StringLiteral) {
-                return node.getLiteralValue();
-            }
-
-            // NoSubstitutionTemplateLiteral (`https://api.com`)
-            if (node.getKind() === SyntaxKind.NoSubstitutionTemplateLiteral) {
-                return node.getLiteralText();
-            }
-
-            // process.env.VAR
-            if (node.getKind() === SyntaxKind.PropertyAccessExpression) {
-                const text = node.getText();
-                if (text.startsWith("process.env.")) {
-                    const varName = text.replace("process.env.", "");
-                    return envConfig[varName] || process.env[varName]; // Check loaded env or system env
+            // Resolve Env Vars logic (Simplified Copy)
+            // Assumes project root is 3 levels up from configDir
+            const projectRoot = path.resolve(configDir, "../../../");
+            const envConfig = {};
+            [".env", ".env.local"].forEach(envFile => {
+                const envPath = path.join(projectRoot, envFile);
+                if (fs.existsSync(envPath)) {
+                    const parsed = dotenv.parse(fs.readFileSync(envPath));
+                    Object.assign(envConfig, parsed);
                 }
-            }
+            });
 
-            // Binary Expression (process.env.VAR || "default")
-            if (node.getKind() === SyntaxKind.BinaryExpression) {
-                const left = node.getLeft();
-                const right = node.getRight();
-                const operator = node.getOperatorToken().getText();
-
-                if (operator === "||" || operator === "??") {
-                    const leftVal = resolveValue(left);
-                    if (leftVal) return leftVal;
-                    return resolveValue(right);
+            const resolveValue = (node) => {
+                if (!node) return undefined;
+                if (node.getKind() === SyntaxKind.StringLiteral) return node.getLiteralValue();
+                if (node.getKind() === SyntaxKind.NoSubstitutionTemplateLiteral) return node.getLiteralText();
+                if (node.getKind() === SyntaxKind.PropertyAccessExpression) {
+                    const text = node.getText();
+                    if (text.startsWith("process.env.")) {
+                        const varName = text.replace("process.env.", "");
+                        return envConfig[varName] || process.env[varName];
+                    }
                 }
-            }
+                if (node.getKind() === SyntaxKind.BinaryExpression) {
+                    const operator = node.getOperatorToken().getText();
+                    if (operator === "||" || operator === "??") {
+                        const leftVal = resolveValue(node.getLeft());
+                        if (leftVal) return leftVal;
+                        return resolveValue(node.getRight());
+                    }
+                }
+                return undefined;
+            };
 
-            return undefined;
-        };
-
-        // 1. Get baseURL
-        const baseURLDecl = sourceFile.getVariableDeclaration("baseURL");
-        if (baseURLDecl) {
-            const init = baseURLDecl.getInitializer();
-            const val = resolveValue(init);
-            if (val) config.baseURL = val;
-
-            if (!config.baseURL) {
-                config.baseURL = "http://localhost:3000/api"; // Default fallback
+            const baseURLDecl = sourceFile.getVariableDeclaration("baseURL");
+            if (baseURLDecl) {
+                const val = resolveValue(baseURLDecl.getInitializer());
+                config.baseURL = val || "http://localhost:3000/api";
+            } else {
+                config.baseURL = "http://localhost:3000/api";
             }
         } else {
             config.baseURL = "http://localhost:3000/api";
         }
 
-        // 2. Discover exported Clients (Smart Detection)
-        // Look for: export const MY_CLIENT = createClient("/path");
-        const variableDecls = sourceFile.getVariableDeclarations();
-        for (const decl of variableDecls) {
-            if (decl.isExported()) {
-                const name = decl.getName();
-                const initializer = decl.getInitializer();
 
-                if (initializer && initializer.getKind() === SyntaxKind.CallExpression) {
-                    const expression = initializer.getExpression();
-                    if (expression.getText() === "createClient") {
-                        const args = initializer.getArguments();
-                        let clientPath = "";
+        // 2. Get Clients from clients.ts
+        if (fs.existsSync(clientsPath)) {
+            const sourceFile = project.createSourceFile("temp_clients.ts", fs.readFileSync(clientsPath, 'utf8'), { overwrite: true });
 
-                        if (args.length > 0) {
-                            // Extract path string, removing quotes
-                            const argText = args[0].getText();
-                            if (argText.startsWith('"') || argText.startsWith("'") || argText.startsWith("`")) {
-                                clientPath = argText.slice(1, -1);
+            const variableDecls = sourceFile.getVariableDeclarations();
+            for (const decl of variableDecls) {
+                if (decl.isExported()) {
+                    const name = decl.getName();
+                    const initializer = decl.getInitializer();
+
+                    if (initializer && initializer.getKind() === SyntaxKind.CallExpression) {
+                        const expression = initializer.getExpression();
+                        if (expression.getText() === "createClient") {
+                            const args = initializer.getArguments();
+                            let clientPath = "";
+
+                            if (args.length > 0) {
+                                const argText = args[0].getText();
+                                if (argText.startsWith('"') || argText.startsWith("'") || argText.startsWith("`")) {
+                                    clientPath = argText.slice(1, -1);
+                                }
                             }
-                        }
 
-                        // Construct the full Base URL for this client
-                        // If baseURL ends with /, trim it before joining, or rely on clean path
-                        const base = config.baseURL.replace(/\/$/, "");
-                        const suffix = clientPath.startsWith("/") ? clientPath : `/${clientPath}`;
+                            const base = (config.baseURL || "").replace(/\/$/, "");
+                            const suffix = clientPath.startsWith("/") ? clientPath : `/${clientPath}`;
+                            config.clients[name] = clientPath ? `${base}${suffix}` : base;
 
-                        config.clients[name] = clientPath ? `${base}${suffix}` : base;
-
-                        // Map prefix to client name for generator
-                        // If clientPath exists, that's the prefix (e.g. /auth)
-                        // If not, it's the BASE_CLIENT relative to root? 
-                        // Actually, if clientPath is "/auth", that's the prefix relative to baseURL?
-                        // Detection needs to match the SPEC path.
-                        // Spec path: /api/auth/login.
-                        // clientPath: /auth. baseURL: .../api.
-                        // Combined: .../api/auth.
-                        // The prefix we want to match in spec is the suffix part if baseURL is implied?
-                        // NO. The spec usually contains the full path /api/auth/login or /auth/login.
-                        // If spec has /api/auth, and clientPath is /api/auth, we match.
-
-                        // If baseURL ends in /api, and clientPath is /auth => client URL .../api/auth.
-                        // If spec path is /api/auth/login.
-                        // We likely want to map "/api/auth" -> AUTH_CLIENT.
-                        // So we should construct the EFFECTIVE PATH suffix from the server root if possible,
-                        // OR just use the clientPath if we assume spec matches it.
-                        // Let's assume the user configures createClient("/api/auth") if that's the prefix.
-
-                        if (clientPath) {
-                            const cleanPrefix = clientPath.startsWith('/') ? clientPath : '/' + clientPath;
-                            config.clientPrefixes[cleanPrefix] = name;
+                            if (clientPath) {
+                                const cleanPrefix = clientPath.startsWith('/') ? clientPath : '/' + clientPath;
+                                config.clientPrefixes[cleanPrefix] = name;
+                            }
                         }
                     }
                 }
             }
         }
-
-        // Also map the base URL path if possible? 
-        // e.g. /api -> BASE_CLIENT? 
-        // Let's stick to explicit clients for now.
 
         return config;
     }

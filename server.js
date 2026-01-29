@@ -84,29 +84,38 @@ function startServer(port) {
         const regenerate = () => {
             const definitionsDir = path.join(apiTargetDir, 'src', 'api-services', 'definitions');
             const configDir = path.join(apiTargetDir, 'src', 'api-services', 'config');
-            const indexPath = path.join(configDir, 'index.ts');
+            const indexTimePath = path.join(configDir, 'index.ts'); // The barrel
+            const constantsPath = path.join(configDir, 'constants.ts'); // NEW: Base URL
+            const corePath = path.join(configDir, 'core.ts');       // Interceptors (User Managed)
+            const clientsPath = path.join(configDir, 'clients.ts'); // Clients (Generator Managed)
             const utilsPath = path.join(configDir, 'utils.ts');
 
             try {
                 console.log("[WATCHER] Regenerating Manifest & Hooks...");
 
-                // 1. Ensure Config Exists (Scaffold)
                 if (!fs.existsSync(configDir)) {
                     fs.mkdirSync(configDir, { recursive: true });
                 }
 
-                // index.ts
-                if (!fs.existsSync(indexPath)) {
-                    const indexContent = `
+                // 1. constants.ts - Managed by Bridge (Base URL)
+                if (!fs.existsSync(constantsPath)) {
+                    const constantsContent = `
+export const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.example.com";
+`;
+                    fs.writeFileSync(constantsPath, constantsContent);
+                    console.log("[WATCHER] Scaffoled config/constants.ts");
+                }
+
+                // 2. core.ts - User Managed (Interceptors), imports constants
+                if (!fs.existsSync(corePath)) {
+                    const coreContent = `
 import axios, {
   AxiosInstance,
   InternalAxiosRequestConfig,
   AxiosResponse,
   AxiosError,
 } from "axios";
-
-const baseURL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "https://localhost:3000/api";
+import { baseURL } from "./constants";
 
 const DEFAULT_CONFIG = {
   baseURL,
@@ -115,7 +124,7 @@ const DEFAULT_CONFIG = {
 };
 
 // 1. Create a factory function to avoid repeating interceptor logic
-const createClient = (path: string = ""): AxiosInstance => {
+export const createClient = (path: string = ""): AxiosInstance => {
   const client = axios.create({
     ...DEFAULT_CONFIG,
     baseURL: path ? \`\${baseURL}\${path}\` : baseURL,
@@ -144,15 +153,38 @@ const createClient = (path: string = ""): AxiosInstance => {
   return client;
 };
 
-// 2. Exported Instances
+// 2. Base Client (Core Identity)
 export const BASE_CLIENT = createClient();
-export const BASE_CLIENT_V1 = createClient("/v1");
-export const AUTH_CLIENT = createClient("/auth");
-
 `;
-                    fs.writeFileSync(indexPath, indexContent);
-                    console.log("[WATCHER] Scaffoled config/index.ts");
+                    fs.writeFileSync(corePath, coreContent);
+                    console.log("[WATCHER] Scaffoled config/core.ts");
                 }
+
+                // ... (rest of function)
+
+
+
+                // clients.ts - SCAFFOLD ONLY (Generator manages this)
+                if (!fs.existsSync(clientsPath)) {
+                    const clientsContent = `
+import { createClient } from "./core";
+
+// Auto-generated clients will be added here
+`;
+                    fs.writeFileSync(clientsPath, clientsContent);
+                    console.log("[WATCHER] Scaffoled config/clients.ts");
+                }
+
+
+                // index.ts - BARREL ONLY (Managed by Bridge)
+                const indexContent = `
+export * from "./core";
+export * from "./clients";
+export * from "./utils";
+`;
+                fs.writeFileSync(indexTimePath, indexContent);
+                console.log("[WATCHER] Updated config/index.ts");
+
 
                 // utils.ts
                 if (!fs.existsSync(utilsPath)) {
@@ -242,6 +274,10 @@ export const constructQueryParams = (
                 // 3b. Generate Types Folder
                 typeService.generateTypes(apiTargetDir, manifest);
 
+                // 3c. Sync Clients (Auto-Prune unused clients)
+                // This ensures clients.ts always matches the definitions, handling manual deletions or UI deletions.
+                updateClientsFile({}, { prune: true });
+
                 // 4. Regenerate Barrel File (src/api-services/index.ts)
                 const moduleNames = Object.keys(manifest).sort();
                 const barrelContent = `export * from "./config";
@@ -272,10 +308,10 @@ ${moduleNames.map((name) => `  ...${name}Api,`).join('\n')}
         watcher.on('all', (event, filePath) => {
             if (filePath.includes('generated')) return;
             if (filePath.includes('api-services' + path.sep + 'types')) return;
-            // Ignore config files unless it's index.ts (which contains baseURL)
-            // Also ignore src/api-services/index.ts (the barrel file we write) to avoid infinite loops
+            // Ignore config/index.ts (barrel) to avoid loops, but allow core.ts and clients.ts
+            if (filePath.endsWith('src' + path.sep + 'api-services' + path.sep + 'config' + path.sep + 'index.ts')) return;
+            // Also ignore src/api-services/index.ts (the main barrel)
             if (filePath.endsWith('src' + path.sep + 'api-services' + path.sep + 'index.ts')) return;
-            if (filePath.includes('config') && !filePath.endsWith('index.ts')) return;
 
             // Immediate Feedback: Notify client that we see changes
             if (!isSyncing) {
@@ -476,9 +512,201 @@ ${moduleNames.map((name) => `  ...${name}Api,`).join('\n')}
         }
     });
 
+    // ---------------------------------------------------------
+    // Config Management (Bridge-Driven)
+    // ---------------------------------------------------------
+
+    // Helper: Generate/Update clients.ts
+    // We now maintain a structured approach:
+    // 1. Read existing clients (simple regex parse)
+    // 2. Merge new proposed clients
+    // 3. (Optional) Filter by usage if syncing
+    const updateClientsFile = (newClientsMap, options = { prune: false }) => {
+        const configDir = path.join(apiTargetDir, 'src', 'api-services', 'config');
+        const clientsPath = path.join(configDir, 'clients.ts');
+
+        if (!fs.existsSync(configDir)) fs.mkdirSync(configDir, { recursive: true });
+
+        let currentContent = "";
+        let existingClients = {};
+
+        if (fs.existsSync(clientsPath)) {
+            currentContent = fs.readFileSync(clientsPath, 'utf8');
+            // Robust regex: allows single/double quotes, spaces, and optionally newlines (though strict createClient format is usually one line)
+            const regex = /export\s+const\s+([a-zA-Z0-9_]+)\s+=\s+createClient\(\s*["']([^"']+)["']\s*\);/g;
+            let match;
+            while ((match = regex.exec(currentContent)) !== null) {
+                existingClients[match[1]] = match[2];
+            }
+        }
+
+        // Merge
+        const mergedClients = { ...existingClients, ...newClientsMap };
+
+        // Handle Pruning (Sync Mode)
+        if (options.prune) {
+            const definitionsDir = path.join(apiTargetDir, 'src', 'api-services', 'definitions');
+            if (fs.existsSync(definitionsDir)) {
+                const usedClients = new Set();
+                const files = fs.readdirSync(definitionsDir).filter(f => f.endsWith('.ts'));
+
+                files.forEach(file => {
+                    const content = fs.readFileSync(path.join(definitionsDir, file), 'utf8');
+                    // Look for imports from "../config"
+                    // import { CLIENT_NAME, ... } from "../config";
+                    // Supports multi-line imports and single/double quotes
+                    const importMatch = content.match(/import\s+{([\s\S]+?)}\s+from\s+["']\.\.\/config["']/);
+                    if (importMatch) {
+                        // Cleanup: Remove newlines, weird spaces
+                        const rawImports = importMatch[1].replace(/\n/g, ' ').replace(/\s+/g, ' ');
+                        const importedItems = rawImports.split(',').map(s => s.trim()).filter(s => s);
+                        importedItems.forEach(item => {
+                            // If it matches a known client name, keep it
+                            if (mergedClients[item]) usedClients.add(item);
+                        });
+                    }
+                });
+
+                // Filter mergedClients to only used ones
+                Object.keys(mergedClients).forEach(key => {
+                    if (!usedClients.has(key)) {
+                        delete mergedClients[key];
+                    }
+                });
+            } else {
+                // No definitions? Clear all clients.
+                Object.keys(mergedClients).forEach(key => delete mergedClients[key]);
+            }
+        }
+
+        // Re-generate File Content
+        let newContent = `import { createClient } from "./core";\n\n`;
+        const sortedKeys = Object.keys(mergedClients).sort();
+
+        if (sortedKeys.length === 0) {
+            newContent += `// No clients currently used\n`;
+        } else {
+            sortedKeys.forEach(name => {
+                newContent += `export const ${name} = createClient("${mergedClients[name]}");\n`;
+
+
+            });
+        }
+
+        if (currentContent.trim() !== newContent.trim()) {
+            fs.writeFileSync(clientsPath, newContent);
+            console.log(`[WATCHER] Updated clients.ts (Content Changed)`);
+        } else {
+            // console.log(`[WATCHER] Skipped clients.ts (No Change)`);
+        }
+        return Object.keys(mergedClients);
+    };
+
+    // Endpoint: Update Config (Upsert)
+    // Called BEFORE generating definitions (to ensure exports exist)
+    router.post('/project/config/update', (req, res) => {
+        try {
+            const { baseUrl, clients } = req.body;
+            const configDir = path.join(apiTargetDir, 'src', 'api-services', 'config');
+            const corePath = path.join(configDir, 'core.ts');
+
+            if (!fs.existsSync(configDir)) fs.mkdirSync(configDir, { recursive: true });
+
+            // 1. Update Core (Base URL)
+            // We use a simplified template replacement or rewrite if it doesn't exist/matches template
+            // For robustness, we'll rewrite using the known template if we're managing it.
+            // But if user modified it manually, we might overwrite? 
+            // The requirement is "Bridge is single source of truth". So we overwrite.
+            if (baseUrl) {
+                const coreContent = `
+import axios, {
+  AxiosInstance,
+  InternalAxiosRequestConfig,
+  AxiosResponse,
+  AxiosError,
+} from "axios";
+
+// Managed by API Builder
+const baseURL =
+  process.env.NEXT_PUBLIC_API_BASE_URL || "${baseUrl}";
+
+const DEFAULT_CONFIG = {
+  baseURL,
+  timeout: 30000,
+  headers: { "Content-Type": "application/json" },
+};
+
+export const createClient = (path: string = ""): AxiosInstance => {
+  const client = axios.create({
+    ...DEFAULT_CONFIG,
+    baseURL: path ? \`\${baseURL}\${path}\` : baseURL,
+  });
+
+  client.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+    if (typeof window !== "undefined") {
+      const token = localStorage.getItem("token");
+      if (token && config.headers) {
+        config.headers.Authorization = \`Bearer \${token}\`;
+      }
+    }
+    return config;
+  });
+
+  client.interceptors.response.use(
+    (response: AxiosResponse) => response,
+    (error: AxiosError) => {
+      return Promise.reject(error);
+    },
+  );
+
+  return client;
+};
+
+export const BASE_CLIENT = createClient();
+`;
+                fs.writeFileSync(corePath, coreContent);
+            }
+
+            // 2. Update Clients (Upsert)
+            if (clients) {
+                updateClientsFile(clients, { prune: false });
+            }
+
+            // Trigger regeneration (Barrel files etc)
+            if (typeof regenerate === 'function') regenerate();
+
+            sendEvent(Date.now().toString(), 'project:updated', 'Configuration updated');
+
+            res.json({ success: true });
+        } catch (e) {
+            console.error("[CONFIG] Update Error:", e);
+            res.status(500).json({ error: e.message });
+        }
+    });
+
+    // Endpoint: Sync Config (Prune)
+    // Called AFTER definition changes (to remove unused)
+    router.post('/project/config/sync', (req, res) => {
+        try {
+            console.log("[SYNC] Pruning unused clients...");
+            const clientKeys = updateClientsFile({}, { prune: true });
+
+            // Trigger regeneration to ensure index.ts is clean
+            if (typeof regenerate === 'function') regenerate();
+
+            sendEvent(Date.now().toString(), 'project:updated', 'Clients synchronized');
+
+            res.json({ success: true, activeClients: clientKeys });
+        } catch (e) {
+            console.error("[SYNC] Error:", e);
+            res.status(500).json({ error: e.message });
+        }
+    });
+
     app.use('/api', router);
 
     const server = app.listen(port, () => {
+
         console.log(`Server running at http://localhost:${port}`);
         if (apiTargetDir && typeof regenerate === 'function') {
             console.log("[STARTUP] Triggering initial generation...");
