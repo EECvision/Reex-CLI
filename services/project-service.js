@@ -139,9 +139,13 @@ class ProjectService {
         const config = { clients: {}, clientPrefixes: {} };
         const project = new Project({ skipAddingFilesFromTsConfig: true });
 
-        // 1. Get BaseURL from core.ts
-        if (fs.existsSync(corePath)) {
-            const sourceFile = project.addSourceFileAtPath(corePath);
+        const constantsPath = path.join(configDir, "constants.ts");
+
+        // 1. Get BaseURL from constants.ts (preferred) or core.ts (fallback)
+        const configSourcePath = fs.existsSync(constantsPath) ? constantsPath : corePath;
+
+        if (fs.existsSync(configSourcePath)) {
+            const sourceFile = project.addSourceFileAtPath(configSourcePath);
 
             // Resolve Env Vars logic (Simplified Copy)
             // Assumes project root is 3 levels up from configDir

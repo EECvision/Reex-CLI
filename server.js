@@ -308,8 +308,13 @@ ${moduleNames.map((name) => `  ...${name}Api,`).join('\n')}
         watcher.on('all', (event, filePath) => {
             if (filePath.includes('generated')) return;
             if (filePath.includes('api-services' + path.sep + 'types')) return;
-            // Ignore config/index.ts (barrel) to avoid loops, but allow core.ts and clients.ts
+            // Ignore config/index.ts (barrel) to avoid loops
             if (filePath.endsWith('src' + path.sep + 'api-services' + path.sep + 'config' + path.sep + 'index.ts')) return;
+            // Ignore config/clients.ts (managed by generator, prevents race condition)
+            if (filePath.endsWith('src' + path.sep + 'api-services' + path.sep + 'config' + path.sep + 'clients.ts')) return;
+            // Ignore config/core.ts and utils.ts (User managed implementation details, should not trigger regen)
+            if (filePath.endsWith('src' + path.sep + 'api-services' + path.sep + 'config' + path.sep + 'core.ts')) return;
+            if (filePath.endsWith('src' + path.sep + 'api-services' + path.sep + 'config' + path.sep + 'utils.ts')) return;
             // Also ignore src/api-services/index.ts (the main barrel)
             if (filePath.endsWith('src' + path.sep + 'api-services' + path.sep + 'index.ts')) return;
 
@@ -608,63 +613,18 @@ ${moduleNames.map((name) => `  ...${name}Api,`).join('\n')}
         try {
             const { baseUrl, clients } = req.body;
             const configDir = path.join(apiTargetDir, 'src', 'api-services', 'config');
-            const corePath = path.join(configDir, 'core.ts');
+
 
             if (!fs.existsSync(configDir)) fs.mkdirSync(configDir, { recursive: true });
 
-            // 1. Update Core (Base URL)
-            // We use a simplified template replacement or rewrite if it doesn't exist/matches template
-            // For robustness, we'll rewrite using the known template if we're managing it.
-            // But if user modified it manually, we might overwrite? 
-            // The requirement is "Bridge is single source of truth". So we overwrite.
+            // 1. Update constants.ts (Base URL)
+            // We now manage Base URL in a separate file to avoid overwriting user's core.ts interceptors.
+            const constantsPath = path.join(configDir, 'constants.ts');
             if (baseUrl) {
-                const coreContent = `
-import axios, {
-  AxiosInstance,
-  InternalAxiosRequestConfig,
-  AxiosResponse,
-  AxiosError,
-} from "axios";
-
-// Managed by API Builder
-const baseURL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "${baseUrl}";
-
-const DEFAULT_CONFIG = {
-  baseURL,
-  timeout: 30000,
-  headers: { "Content-Type": "application/json" },
-};
-
-export const createClient = (path: string = ""): AxiosInstance => {
-  const client = axios.create({
-    ...DEFAULT_CONFIG,
-    baseURL: path ? \`\${baseURL}\${path}\` : baseURL,
-  });
-
-  client.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-    if (typeof window !== "undefined") {
-      const token = localStorage.getItem("token");
-      if (token && config.headers) {
-        config.headers.Authorization = \`Bearer \${token}\`;
-      }
-    }
-    return config;
-  });
-
-  client.interceptors.response.use(
-    (response: AxiosResponse) => response,
-    (error: AxiosError) => {
-      return Promise.reject(error);
-    },
-  );
-
-  return client;
-};
-
-export const BASE_CLIENT = createClient();
+                const constantsContent = `
+export const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL || "${baseUrl}";
 `;
-                fs.writeFileSync(corePath, coreContent);
+                fs.writeFileSync(constantsPath, constantsContent);
             }
 
             // 2. Update Clients (Upsert)
