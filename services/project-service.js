@@ -94,6 +94,8 @@ class ProjectService {
                                                 }
                                             }
                                         }
+
+
                                         return { client, url, method };
                                     };
 
@@ -102,7 +104,20 @@ class ProjectService {
                                         try {
                                             const params = init.getParameters().map(p => this.getParameterDetails(p, sourceFile));
                                             const metadata = extractMetadata(init);
-                                            moduleExports[methodName] = { args: params, ...metadata };
+
+                                            // Check for @auth in leading comments on the PropertyAssignment
+                                            let requiresAuth = false;
+                                            const fullText = sourceFile.getFullText();
+                                            const leadingComments = property.getLeadingCommentRanges();
+                                            for (const comment of leadingComments) {
+                                                const commentText = fullText.substring(comment.getPos(), comment.getEnd());
+                                                if (commentText.includes("@auth")) {
+                                                    requiresAuth = true;
+                                                    break;
+                                                }
+                                            }
+
+                                            moduleExports[methodName] = { args: params, ...metadata, requiresAuth };
                                             count++;
                                         } catch (err) {
                                             console.error(`[ProjectService] Error processing ${methodName}:`, err);
