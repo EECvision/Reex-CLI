@@ -109,15 +109,20 @@ class ProjectService {
                                             let requiresAuth = false;
                                             const fullText = sourceFile.getFullText();
                                             const leadingComments = property.getLeadingCommentRanges();
+                                            let contentType = undefined;
                                             for (const comment of leadingComments) {
                                                 const commentText = fullText.substring(comment.getPos(), comment.getEnd());
                                                 if (commentText.includes("@auth")) {
                                                     requiresAuth = true;
-                                                    break;
+                                                }
+                                                // Parse @contentType value
+                                                const contentTypeMatch = commentText.match(/@contentType\s+(\S+)/);
+                                                if (contentTypeMatch) {
+                                                    contentType = contentTypeMatch[1];
                                                 }
                                             }
 
-                                            moduleExports[methodName] = { args: params, ...metadata, requiresAuth };
+                                            moduleExports[methodName] = { args: params, ...metadata, requiresAuth, contentType };
                                             count++;
                                         } catch (err) {
                                             console.error(`[ProjectService] Error processing ${methodName}:`, err);
