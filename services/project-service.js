@@ -250,6 +250,19 @@ class ProjectService {
             }
         }
 
+        // 3. Get metadata from metadata.json
+        const metadataPath = path.join(configDir, 'metadata.json');
+        if (fs.existsSync(metadataPath)) {
+            try {
+                const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
+                if (metadata.collectionName) {
+                    config.collectionName = metadata.collectionName;
+                }
+            } catch (e) {
+                console.warn('[ProjectService] Failed to parse metadata.json:', e);
+            }
+        }
+
         return config;
     }
 

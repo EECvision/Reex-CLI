@@ -74,7 +74,7 @@ const createProjectRouter = (apiTargetDir) => {
     // Update Config (Upsert)
     router.post('/config/update', (req, res) => {
         try {
-            const { baseUrl, clients } = req.body;
+            const { baseUrl, clients, collectionName } = req.body;
             const configDir = path.join(apiTargetDir, 'src', 'api-services', 'config');
 
             if (!fs.existsSync(configDir)) fs.mkdirSync(configDir, { recursive: true });
@@ -91,6 +91,21 @@ export const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL || "${baseUrl}";
             // 2. Update Clients (Upsert)
             if (clients) {
                 configService.updateClientsFile(apiTargetDir, clients, { prune: false });
+            }
+
+            // 3. Update metadata.json (Collection Name and other metadata)
+            if (collectionName) {
+                const metadataPath = path.join(configDir, 'metadata.json');
+                let metadata = {};
+                if (fs.existsSync(metadataPath)) {
+                    try {
+                        metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
+                    } catch (e) {
+                        console.warn('[CONFIG] Failed to parse existing metadata.json:', e);
+                    }
+                }
+                metadata.collectionName = collectionName;
+                fs.writeFileSync(metadataPath, JSON.stringify(metadata, null, 2));
             }
 
             // Trigger regeneration? NO. 
