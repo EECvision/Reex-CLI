@@ -249,6 +249,29 @@ export function QueryProvider({ children }: { children: ReactNode }) {
         console.log("[Generator] Scaffoled providers/QueryProvider.tsx");
       }
 
+      // 8. Install Dependencies (axios, @tanstack/react-query)
+      const packageJsonPath = path.join(apiTargetDir, 'package.json');
+      if (fs.existsSync(packageJsonPath)) {
+        const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+        const dependencies = packageJson.dependencies || {};
+        const devDependencies = packageJson.devDependencies || {};
+        const allDeps = { ...dependencies, ...devDependencies };
+
+        const packagesToInstall = [];
+        if (!allDeps['axios']) packagesToInstall.push('axios');
+        if (!allDeps['@tanstack/react-query']) packagesToInstall.push('@tanstack/react-query');
+
+        if (packagesToInstall.length > 0) {
+          console.log(`[Generator] Missing dependencies: ${packagesToInstall.join(', ')}. Installing...`);
+          try {
+            require('child_process').execSync(`npm install ${packagesToInstall.join(' ')}`, { cwd: apiTargetDir, stdio: 'inherit' });
+            console.log("[Generator] Dependencies installed successfully.");
+          } catch (err) {
+            console.error("[Generator] Failed to install dependencies:", err);
+          }
+        }
+      }
+
       sseService.broadcast(Date.now().toString(), 'project:updated', 'Project generated');
       console.log("[Generator] Regeneration Complete");
       return { success: true, manifestKeys: moduleNames };
