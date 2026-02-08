@@ -58,11 +58,12 @@ class HookService {
         );
       });
 
-      const tanstackImports = [];
-      if (usedMutation) tanstackImports.push("useQueryClient");
-      const tanstackImportLine = tanstackImports.length
-        ? `import { ${tanstackImports.join(", ")} } from "@tanstack/react-query";`
-        : "";
+      // Build Imports
+      const tanstackImports = ["useQueryClient"];
+      if (usedQuery) tanstackImports.push("type UseQueryOptions");
+      if (usedMutation) tanstackImports.push("type UseMutationOptions");
+
+      const tanstackImportLine = `import { ${tanstackImports.join(", ")} } from "@tanstack/react-query";`;
 
       const commonImports = [
         usedQuery && "useApiQuery",
@@ -71,19 +72,23 @@ class HookService {
         .filter(Boolean)
         .join(", ");
 
-      // 1. Generate the raw content first
+      // 1. Generate the raw content
       const rawContent = `// Generated file - DO NOT EDIT
 ${tanstackImportLine}
 import { ${moduleName}Api } from "../definitions/${moduleName}";
 ${commonImports ? `import { ${commonImports} } from ".";` : ""}
+
+// Helper Types
+type ApiData<T extends (...args: any) => any> = Awaited<ReturnType<T>>;
+type ApiVars<T extends (...args: any) => any> = Parameters<T>[0];
 
 ${keyFactory}
 
 ${hooks.join("\n\n")}
 `;
 
-      // 2. Dynamically add the lint disable comment
-      const fileContent = this.addLintDisableIfNeeded(rawContent);
+      // 2. Add lint disable
+      const fileContent = `/* eslint-disable @typescript-eslint/no-explicit-any */\n${rawContent}`;
 
       const pascalModule =
         moduleName.charAt(0).toUpperCase() + moduleName.slice(1);
@@ -112,15 +117,6 @@ ${hooks.join("\n\n")}
     this.generateIndexFile(generatedDir, exportLines);
   }
 
-  // --- NEW HELPER ---
-  addLintDisableIfNeeded(content) {
-    // Regex matches the word "any" (boundary \b) to avoid matching "many", "company", etc.
-    if (/\bany\b/.test(content)) {
-      return `/* eslint-disable @typescript-eslint/no-explicit-any */\n${content}`;
-    }
-    return content;
-  }
-
   getSafeArgName(name) {
     if (/^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(name)) return name;
     return "params";
@@ -135,35 +131,15 @@ ${hooks.join("\n\n")}
     methodNames
       .filter((m) => m.startsWith("get_"))
       .forEach((method) => {
-        const args = methods[method].args || [];
+        const hasArgs = methods[method].args && methods[method].args.length > 0;
 
-        if (!args.length) {
-          lines.push(
-            `  ${method}: () => [...${moduleName}Keys.all, "${method}"] as const,`
-          );
-          return;
-        }
-
-        const sanitizedArgs = args.map((a) => ({
-          ...a,
-          name: this.getSafeArgName(a.name),
-        }));
-
-        // Simplify: If there's exactly one object argument, treat it as the params object
-        const isSingleObject = args.length === 1 && args[0].isObject;
-
-        let paramType;
-        if (isSingleObject) {
-          paramType = this.buildType(sanitizedArgs[0]);
-        } else {
-          paramType = this.buildType({
-            isObject: true,
-            properties: sanitizedArgs,
-          });
-        }
+        // Strict typing: If args exist, param is mandatory. If not, it's optional/void.
+        const paramDef = hasArgs
+          ? `params: ApiVars<typeof ${moduleName}Api.${method}>`
+          : `params?: ApiVars<typeof ${moduleName}Api.${method}>`;
 
         lines.push(
-          `  ${method}: (params: ${paramType}) => [...${moduleName}Keys.all, "${method}", params] as const,`
+          `  ${method}: (${paramDef}) => [...${moduleName}Keys.all, "${method}", params] as const,`
         );
       });
 
@@ -187,62 +163,55 @@ ${hooks.join("\n\n")}
     const isQuery = methodName.startsWith("get_");
     const hookName = this.getHookName(methodName);
 
-    const sanitizedArgs = (args || []).map((a) => ({
-      ...a,
-      name: this.getSafeArgName(a.name),
-    }));
+    const apiMethod = `${moduleName}Api.${methodName}`;
+    const apiData = `ApiData<typeof ${apiMethod}>`;
+    const apiVars = `ApiVars<typeof ${apiMethod}>`;
 
     if (isQuery) {
-      if (!sanitizedArgs.length) {
-        return `export const ${hookName} = (
-  options?: Parameters<typeof useApiQuery>[2]
+      const hasArgs = args && args.length > 0;
+
+      // Case 1: API takes arguments (e.g. { id: '123' })
+      if (hasArgs) {
+        return `export const ${hookName} = <TData = ${apiData}>(
+  params: ${apiVars},
+  options?: Omit<
+    UseQueryOptions<${apiData}, Error, TData>,
+    "queryKey" | "queryFn"
+  >
 ) =>
   useApiQuery(
-    ${keyFactoryName}.${methodName}(),
-    () => ${moduleName}Api.${methodName}(),
+    ${keyFactoryName}.${methodName}(params),
+    () => ${apiMethod}(params),
     options
   );`;
       }
 
-      // Simplify: If there's exactly one object argument, treat it as the params object
-      const isSingleObject = args.length === 1 && args[0].isObject;
-
-      let paramType;
-      let apiArgs;
-
-      if (isSingleObject) {
-        paramType = this.buildType(sanitizedArgs[0]);
-        apiArgs = "params";
-      } else {
-        paramType = this.buildType({
-          isObject: true,
-          properties: sanitizedArgs,
-        });
-
-        apiArgs = sanitizedArgs
-          .map((arg) => `params.${arg.name}`)
-          .join(", ");
-      }
-
-      return `export const ${hookName} = (
-  params: ${paramType},
-  options?: Parameters<typeof useApiQuery>[2]
+      // Case 2: API takes NO arguments (cleaner signature)
+      return `export const ${hookName} = <TData = ${apiData}>(
+  options?: Omit<
+    UseQueryOptions<${apiData}, Error, TData>,
+    "queryKey" | "queryFn"
+  >
 ) =>
   useApiQuery(
-    ${keyFactoryName}.${methodName}(params),
-    () => ${moduleName}Api.${methodName}(${apiArgs}),
+    ${keyFactoryName}.${methodName}(),
+    () => ${apiMethod}(),
     options
   );`;
     }
 
     // Mutation
-    // Note: The 'as any' cast here will trigger the lint disable automatically
+    // We assume mutations take 1 argument (variables) or void.
+    // The inference handles both correctly.
     return `export const ${hookName} = (
-  options?: Omit<NonNullable<Parameters<typeof useApiMutation>[1]>, 'mutationFn'>
+  options?: Omit<
+    UseMutationOptions<${apiData}, Error, ${apiVars}>,
+    "mutationFn"
+  >
 ) => {
   const queryClient = useQueryClient();
 
-  return useApiMutation(${moduleName}Api.${methodName}, {
+  return useApiMutation(${apiMethod}, {
     ...options,
     onSuccess: (data, variables, context) => {
       queryClient.invalidateQueries({ queryKey: ${keyFactoryName}.all });
@@ -252,22 +221,9 @@ ${hooks.join("\n\n")}
 };`;
   }
 
-  buildType(param) {
-    if (!param) return "any";
-    if (param.type && !param.isObject) return param.type;
-    if (param.isObject && param.properties) {
-      return `{ ${param.properties
-        .map(
-          (p) =>
-            `${p.name}${p.isOptional ? "?" : ""}: ${this.buildType(p)}`
-        )
-        .join("; ")} }`;
-    }
-    return "any";
-  }
-
   generateIndexFile(generatedDir, exportLines) {
-    const rawContent = `// Generated file - DO NOT EDIT
+    const content = `/* eslint-disable @typescript-eslint/no-explicit-any */
+// Generated file - DO NOT EDIT
 import {
   type QueryKey,
   type UseMutationOptions,
@@ -322,10 +278,6 @@ export const useApiQuery = <
 
 ${exportLines.join("\n")}
 `;
-
-    // Apply the check to index file as well
-    const content = this.addLintDisableIfNeeded(rawContent);
-
     fs.writeFileSync(path.join(generatedDir, "index.ts"), content);
   }
 }
