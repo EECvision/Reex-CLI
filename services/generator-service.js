@@ -16,7 +16,7 @@ class GeneratorService {
    * 4. Generates Types
    * 5. Prunes unused clients
    * 6. Generates index barrel
-   * 
+   * 7. Generates QueryProvider
    * @param {string} apiTargetDir 
    */
   regenerate(apiTargetDir) {
@@ -27,6 +27,8 @@ class GeneratorService {
     const corePath = path.join(configDir, 'core.ts');
     const clientsPath = path.join(configDir, 'clients.ts');
     const utilsPath = path.join(configDir, 'utils.ts');
+    const providersDir = path.join(apiTargetDir, 'src', 'api-services', 'providers');
+    const queryProviderPath = path.join(providersDir, 'QueryProvider.tsx');
 
     try {
       console.log("[Generator] Regenerating Manifest & Hooks...");
@@ -222,6 +224,30 @@ ${moduleNames.map((name) => `  ...${name}Api,`).join('\n')}
       const barrelPath = path.join(apiTargetDir, 'src', 'api-services', 'index.ts');
       fs.writeFileSync(barrelPath, barrelContent);
       console.log("[Generator] Regenerated src/api-services/index.ts");
+
+      // 7. Providers (QueryProvider)
+      if (!fs.existsSync(providersDir)) {
+        fs.mkdirSync(providersDir, { recursive: true });
+      }
+
+      if (!fs.existsSync(queryProviderPath)) {
+        const queryProviderContent = `
+"use client";
+
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ReactNode } from "react";
+
+export const queryClient = new QueryClient();
+
+export function QueryProvider({ children }: { children: ReactNode }) {
+  return (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  );
+}
+`;
+        fs.writeFileSync(queryProviderPath, queryProviderContent.trim());
+        console.log("[Generator] Scaffoled providers/QueryProvider.tsx");
+      }
 
       sseService.broadcast(Date.now().toString(), 'project:updated', 'Project generated');
       console.log("[Generator] Regeneration Complete");
