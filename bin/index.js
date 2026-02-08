@@ -6,15 +6,17 @@ const open = require('open');
 const { startServer } = require('../server');
 
 program
-    .name('reex')
-    .description('Reex API Builder - Local Bridge')
+    .name('reex-build')
+    .description('Reex API Builder - Generate TypeScript types and React Query hooks from OpenAPI specs')
+    .version('1.0.0')
     .option('-p, --port <number>', 'Port to run the local server on', '4000')
     .option('-d, --dir <path>', 'Directory to manage (defaults to CWD)', process.cwd())
+    .option('--no-open', 'Do not automatically open the browser')
     .action(async (options) => {
         const port = parseInt(options.port);
         const targetDir = path.resolve(options.dir);
 
-        console.log(`\n🚀 Starting Reex Local Bridge...`);
+        console.log(`\n🚀 Starting Reex API Builder...`);
         console.log(`📂 Managing Directory: ${targetDir}`);
         console.log(`🔌 Port: ${port}`);
 
@@ -28,14 +30,15 @@ program
         startServer(port);
 
         // Open the Hosted UI
-        // We pass the local port so the UI knows where to connect
-        // const clientUrl = `https://reex-api-client.vercel.app/?localPort=${port}`;
-        const clientUrl = `http://localhost:3000/?localPort=${port}`;
+        const clientUrl = `https://reex-api-client.vercel.app/?localPort=${port}`;
+        // const clientUrl = `http://localhost:3000/?localPort=${port}`;
 
-        console.log(`\n🌐 Opening UI: ${clientUrl}`);
-        await open(clientUrl);
-        // Commented out 'open' for now to avoid popping windows during dev/testing, 
-        // but in prod this should be enabled.
+        if (options.open !== false) {
+            console.log(`\n🌐 Opening UI: ${clientUrl}`);
+            await open(clientUrl);
+        } else {
+            console.log(`\n🌐 UI available at: ${clientUrl}`);
+        }
     });
 
 program.parse();

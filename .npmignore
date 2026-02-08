@@ -1,5 +1,9 @@
-# Dependencies
-node_modules/
+# Source control
+.git/
+.gitignore
+
+# Tests
+tests/
 
 # IDE
 .vscode/
@@ -17,8 +21,6 @@ npm-debug.log*
 .env
 .env.local
 
-# Test coverage
-coverage/
-
-# Build artifacts
+# Development
 *.tgz
+package-lock.json
