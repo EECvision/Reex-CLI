@@ -149,10 +149,18 @@ ${hooks.join("\n\n")}
           name: this.getSafeArgName(a.name),
         }));
 
-        const paramType = this.buildType({
-          isObject: true,
-          properties: sanitizedArgs,
-        });
+        // Simplify: If there's exactly one object argument, treat it as the params object
+        const isSingleObject = args.length === 1 && args[0].isObject;
+
+        let paramType;
+        if (isSingleObject) {
+          paramType = this.buildType(sanitizedArgs[0]);
+        } else {
+          paramType = this.buildType({
+            isObject: true,
+            properties: sanitizedArgs,
+          });
+        }
 
         lines.push(
           `  ${method}: (params: ${paramType}) => [...${moduleName}Keys.all, "${method}", params] as const,`
@@ -196,14 +204,25 @@ ${hooks.join("\n\n")}
   );`;
       }
 
-      const paramType = this.buildType({
-        isObject: true,
-        properties: sanitizedArgs,
-      });
+      // Simplify: If there's exactly one object argument, treat it as the params object
+      const isSingleObject = args.length === 1 && args[0].isObject;
 
-      const apiArgs = sanitizedArgs
-        .map((arg) => `params.${arg.name}`)
-        .join(", ");
+      let paramType;
+      let apiArgs;
+
+      if (isSingleObject) {
+        paramType = this.buildType(sanitizedArgs[0]);
+        apiArgs = "params";
+      } else {
+        paramType = this.buildType({
+          isObject: true,
+          properties: sanitizedArgs,
+        });
+
+        apiArgs = sanitizedArgs
+          .map((arg) => `params.${arg.name}`)
+          .join(", ");
+      }
 
       return `export const ${hookName} = (
   params: ${paramType},
