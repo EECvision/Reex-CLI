@@ -24,14 +24,14 @@ program
         process.env.API_TARGET_DIR = targetDir;
         process.env.PORT = port;
         // Force allow localhost:3000/4000/5173 and Vercel
-        process.env.CORS_ORIGIN = "https://reex-api-client.vercel.app,http://localhost:5173,http://localhost:3000,http://localhost:4000";
+        process.env.CORS_ORIGIN = "https://reex-api-builder.vercel.app,http://localhost:5173,http://localhost:3000,http://localhost:4000";
 
         // Start the Server
         startServer(port);
 
         // Open the Hosted UI
-        const clientUrl = `https://reex-api-client.vercel.app/?localPort=${port}`;
-        // const clientUrl = `http://localhost:3000/?localPort=${port}`;
+        // const clientUrl = `https://reex-api-builder.vercel.app/?localPort=${port}`;
+        const clientUrl = `http://localhost:3000/?localPort=${port}`;
 
         if (options.open !== false) {
             console.log(`\n🌐 Opening UI: ${clientUrl}`);

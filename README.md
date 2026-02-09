@@ -1,15 +1,15 @@
 # Reex API Builder
 
-Reex API Builder is a developer-first tool designed to streamline the lifecycle of API testing and integration. While traditional tools focus heavily on backend verification, Reex is built specifically with the Frontend Developer in mind.
+Reex API Builder is a developer-first tool designed to streamline the lifecycle of API testing and integration. While traditional tools focus heavily on backend verification, Reex API Builder is built specifically with the Frontend Developer in mind.
 
-It is not just an API client; it is a code generation engine. Reex connects directly to your local project, managing the gap between your API definitions and your UI components by generating strictly typed, production ready hooks directly into your codebase.
+It is not just an API client; it is a code generation engine. Reex API Builder connects directly to your local project, managing the gap between your API definitions and your UI components by generating strictly typed, production ready hooks directly into your codebase.
 
 [![npm version](https://img.shields.io/npm/v/reex-api-builder.svg)](https://www.npmjs.com/package/reex-api-builder)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## Why Reex?
+## Why Reex API Builder?
 
-The standard workflow for frontend developers involves manually typing API collections, creating interfaces, and writing repetitive fetch hooks. **Reex eliminates this boilerplate:**
+The standard workflow for frontend developers involves manually typing API collections, creating interfaces, and writing repetitive fetch hooks. **Reex API Builder eliminates this boilerplate:**
 
 - ✨ **No more manual typing** – We generate your API collections for you
 - 🔒 **No more interface mismatch** – TypeScript interfaces are generated automatically
@@ -70,7 +70,7 @@ Import your Swagger/OpenAPI or Postman collection via the web UI.
 
 ### 2. Generate Code
 
-Click **Analyze** → **Update Selected**. Reex creates:
+Click **Analyze** → **Update Selected**. Reex API Builder creates:
 
 ```
 src/
@@ -124,7 +124,7 @@ function UserList() {
 | Mode | Use Case |
 |------|----------|
 | **Project Mode** | Full integration with your codebase (requires `reex-build` CLI) |
-| **Standalone Mode** | Quick API testing without a project – [try it online](https://reex-api-client.vercel.app/) |
+| **Standalone Mode** | Quick API testing without a project – [try it online](https://reex-api-builder.vercel.app/) |
 | **Text Mode** | Scratchpad for ad-hoc API testing |
 
 ## Requirements
@@ -134,8 +134,8 @@ function UserList() {
 
 ## Links
 
-- 📖 [Full Documentation](https://reex-api-client.vercel.app/docs)
-- 🌐 [Web UI (Standalone Mode)](https://reex-api-client.vercel.app/)
+- 📖 [Full Documentation](https://reex-api-builder.vercel.app/docs)
+- 🌐 [Web UI (Standalone Mode)](https://reex-api-builder.vercel.app/)
 - 🐛 [Report Issues](https://github.com/EECvision/reex-api-builder/issues)
 
 ## License
