@@ -50,11 +50,14 @@ class HookService {
       );
 
       const hooks = methodNames.map((method) => {
+        const methodDef = methods[method];
         return this.toHookContent(
           method,
-          methods[method].args || [],
+          methodDef.args || [],
           moduleName,
-          keyFactoryName
+          keyFactoryName,
+          methodDef.requiresAuth,
+          methodDef.contentType
         );
       });
 
@@ -159,7 +162,14 @@ ${hooks.join("\n\n")}
     return `use${cleanPrefix}${suffix}${isQuery ? "Query" : "Mutation"}`;
   }
 
-  toHookContent(methodName, args, moduleName, keyFactoryName) {
+  toHookContent(
+    methodName,
+    args,
+    moduleName,
+    keyFactoryName,
+    requiresAuth = false,
+    contentType = undefined
+  ) {
     const isQuery = methodName.startsWith("get_");
     const hookName = this.getHookName(methodName);
 
@@ -167,12 +177,21 @@ ${hooks.join("\n\n")}
     const apiData = `ApiData<typeof ${apiMethod}>`;
     const apiVars = `ApiVars<typeof ${apiMethod}>`;
 
+    const jsDocLines = [];
+    if (requiresAuth) jsDocLines.push(" * @auth");
+    if (contentType) jsDocLines.push(` * @contentType ${contentType}`);
+
+    const jsDoc =
+      jsDocLines.length > 0
+        ? `/**\n${jsDocLines.join("\n")}\n */\n`
+        : "";
+
     if (isQuery) {
       const hasArgs = args && args.length > 0;
 
       // Case 1: API takes arguments (e.g. { id: '123' })
       if (hasArgs) {
-        return `export const ${hookName} = <TData = ${apiData}>(
+        return `${jsDoc}export const ${hookName} = <TData = ${apiData}>(
   params: ${apiVars},
   options?: Omit<
     UseQueryOptions<${apiData}, Error, TData>,
@@ -187,7 +206,7 @@ ${hooks.join("\n\n")}
       }
 
       // Case 2: API takes NO arguments (cleaner signature)
-      return `export const ${hookName} = <TData = ${apiData}>(
+      return `${jsDoc}export const ${hookName} = <TData = ${apiData}>(
   options?: Omit<
     UseQueryOptions<${apiData}, Error, TData>,
     "queryKey" | "queryFn"
@@ -203,7 +222,7 @@ ${hooks.join("\n\n")}
     // Mutation
     // We assume mutations take 1 argument (variables) or void.
     // The inference handles both correctly.
-    return `export const ${hookName} = (
+    return `${jsDoc}export const ${hookName} = (
   options?: Omit<
     UseMutationOptions<${apiData}, Error, ${apiVars}>,
     "mutationFn"
