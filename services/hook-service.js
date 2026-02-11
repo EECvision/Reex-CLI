@@ -62,11 +62,18 @@ class HookService {
       });
 
       // Build Imports
-      const tanstackImports = ["useQueryClient"];
-      if (usedQuery) tanstackImports.push("type UseQueryOptions");
-      if (usedMutation) tanstackImports.push("type UseMutationOptions");
+      const tanstackImports = [];
+      if (usedMutation) {
+        tanstackImports.push("useQueryClient");
+        tanstackImports.push("type UseMutationOptions");
+      }
+      if (usedQuery) {
+        tanstackImports.push("type UseQueryOptions");
+      }
 
-      const tanstackImportLine = `import { ${tanstackImports.join(", ")} } from "@tanstack/react-query";`;
+      const tanstackImportLine = tanstackImports.length > 0
+        ? `import { ${tanstackImports.join(", ")} } from "@tanstack/react-query";`
+        : "";
 
       const commonImports = [
         usedQuery && "useApiQuery",

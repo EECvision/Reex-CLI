@@ -148,6 +148,132 @@ class ProjectService {
     }
 
     /**
+     * Prunes unused interfaces, types, and imports from definition files.
+     * @param {string} targetDir - The directory containing API definitions.
+     */
+    pruneUnusedDefinitions(targetDir) {
+        console.log(`[ProjectService] Starting Prune in: ${targetDir}`);
+        if (!fs.existsSync(targetDir)) {
+            console.log(`[ProjectService] Target dir does not exist: ${targetDir}`);
+            return;
+        }
+
+        // Re-initialize project to ensure fresh state
+        this.project = new Project({
+            skipAddingFilesFromTsConfig: true,
+        });
+
+        const files = fs.readdirSync(targetDir).filter((f) => f.endsWith(".ts"));
+        console.log(`[ProjectService] Found ${files.length} definition files to check.`);
+
+        for (const file of files) {
+            const filePath = path.join(targetDir, file);
+            const sourceFile = this.project.addSourceFileAtPath(filePath);
+            const moduleName = file.replace(".ts", "");
+
+            // Find the API Object (e.g. const accountReportsApi = { ... })
+            // We assume standard naming convention: moduleName + "Api"
+            // If not found, we might skip or try to find ANY exported object.
+            // Let's stick to the convention used by the generator.
+            const variableDecl = sourceFile.getVariableDeclaration(`${moduleName}Api`);
+
+            if (variableDecl) {
+                const apiObjectText = variableDecl.getInitializer()?.getText() || "";
+                let modified = false;
+
+                // 1. Types & Interfaces
+                const isUsed = (name) => {
+                    // Check usage in API Object
+                    if (apiObjectText.includes(name)) return true;
+
+                    // Check usage in other interfaces/types (simple text check)
+                    let usedInOthers = false;
+                    sourceFile.getInterfaces().forEach(i => {
+                        if (i.getName() !== name && i.getText().includes(name)) usedInOthers = true;
+                    });
+                    if (usedInOthers) return true;
+
+                    sourceFile.getTypeAliases().forEach(t => {
+                        if (t.getName() !== name && t.getText().includes(name)) usedInOthers = true;
+                    });
+                    return usedInOthers;
+                };
+
+                const definitionsToRemove = [];
+                sourceFile.getInterfaces().forEach(iface => {
+                    if (!isUsed(iface.getName())) definitionsToRemove.push(iface.getName());
+                });
+                sourceFile.getTypeAliases().forEach(typeAlias => {
+                    if (!isUsed(typeAlias.getName())) definitionsToRemove.push(typeAlias.getName());
+                });
+
+                definitionsToRemove.forEach(name => {
+                    const i = sourceFile.getInterface(name);
+                    if (i) { i.remove(); modified = true; }
+                    const t = sourceFile.getTypeAlias(name);
+                    if (t) { t.remove(); modified = true; }
+                });
+
+                // 2. Imports
+                // Heuristic: Check if the name appears in the code *outside* of the import declaration itself.
+                // We strip strings and comments to avoid matching module paths or JSDoc.
+                const fullText = sourceFile.getText();
+                const strippedText = fullText
+                    .replace(/\/\*[\s\S]*?\*\//g, '') // strip block comments
+                    .replace(/\/\/.*/g, '')           // strip line comments
+                    .replace(/"[^"]*"/g, '""')        // strip double quote strings
+                    .replace(/'[^']*'/g, "''")        // strip single quote strings
+                    .replace(/`[^`]*`/g, "``");       // strip backtick strings
+
+                sourceFile.getImportDeclarations().forEach(importDecl => {
+                    const namedImports = importDecl.getNamedImports();
+                    if (namedImports.length > 0) {
+                        const unused = namedImports.filter(ni => {
+                            const name = ni.getName();
+
+                            // 1. Check if it's used in the stripped text (code only)
+                            // The name in the import declaration { Name } is NOT stripped because it's not a string.
+                            // So we expect exactly 1 match (the import specifier itself).
+                            // If there are > 1 matches, it's used elsewhere in code.
+                            const regex = new RegExp(`\\b${name}\\b`, 'g');
+                            const matches = strippedText.match(regex);
+
+                            return !matches || matches.length <= 1;
+                        });
+
+                        if (unused.length > 0) {
+                            unused.forEach(u => {
+                                console.log(`[ProjectService] Removing unused import: ${u.getName()} from ${file}`);
+                                u.remove();
+                            });
+                            modified = true;
+                        }
+                    }
+
+                    // Remove empty import declarations
+                    if (importDecl.getNamedImports().length === 0 && !importDecl.getNamespaceImport() && !importDecl.getDefaultImport()) {
+                        importDecl.remove();
+                        modified = true;
+                    }
+                });
+
+                if (modified) {
+                    try {
+                        sourceFile.saveSync();
+                        console.log(`[ProjectService] Pruned unused code from ${file}`);
+                    } catch (e) {
+                        console.error(`[ProjectService] Failed to save pruned file ${file}:`, e);
+                    }
+                } else {
+                    // console.log(`[ProjectService] No unused code found in ${file}`);
+                }
+            } else {
+                console.warn(`[ProjectService] Could not find API object in ${file} (Expected ${moduleName}Api)`);
+            }
+        }
+    }
+
+    /**
      * Reads the project config directly from core.ts and clients.ts.
      * @param {string} configDir - Path to src/api-services/config
      */

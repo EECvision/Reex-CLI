@@ -199,6 +199,9 @@ export const constructQueryParams = (
       }
 
       // 2. Generate Manifest
+      // Prune definition files first (remove unused interfaces/imports)
+      projectService.pruneUnusedDefinitions(definitionsDir);
+
       const manifest = projectService.generateManifest(definitionsDir);
 
       // 3. Generate Hooks
