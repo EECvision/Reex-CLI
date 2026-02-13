@@ -20,15 +20,32 @@ class ConfigService {
         if (!fs.existsSync(configDir)) fs.mkdirSync(configDir, { recursive: true });
 
         // Force Single Client Generation
-        const newContent = `import { createApiClient } from "./core";
+        const clientsContent = `
+import { createApiClient } from "./core";
 import { cookieTokenProvider } from "./token-providers";
 
+// Choose the appropriate token provider for your authentication strategy:
+
+// Option 1: Cookie-based auth (default)
+// Server manages refresh tokens via httpOnly cookies
 export const apiClient = createApiClient(cookieTokenProvider);
+
+// Option 2: NextAuth.js
+// Uncomment if using NextAuth.js for session management:
+// import { nextAuthTokenProvider } from "./token-providers";
+// export const apiClient = createApiClient(nextAuthTokenProvider);
+
+// Option 3: LocalStorage-based auth
+// Client-side token management with refresh token in localStorage:
+// import { localStorageTokenProvider } from "./token-providers";
+// export const apiClient = createApiClient(localStorageTokenProvider);
+// Note: Call localStorageTokenProvider.setTokens() after login
+// Call localStorageTokenProvider.clearTokens() on logout
 `;
 
         const currentContent = fs.existsSync(clientsPath) ? fs.readFileSync(clientsPath, 'utf8') : "";
 
-        if (currentContent.trim() !== newContent.trim()) {
+        if (currentContent.trim() !== clientsContent.trim()) {
             fs.writeFileSync(clientsPath, newContent);
             console.log(`[ConfigService] Updated clients.ts (Content Changed)`);
         }
