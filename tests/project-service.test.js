@@ -47,11 +47,9 @@ test('Project Service Tests', async (t) => {
     await t.test('generateManifest extracts metadata (Client/URL)', () => {
         const moduleName = 'orders';
         const fileContent = `
+            import { apiClient } from '../config/core';
             export const ${moduleName} = {
-                 get_list: () => { 
-                     const url = "/orders"; 
-                     return handleApiCall(() => API_CLIENT.get(url)); 
-                 }
+                 get_list: () => apiClient.get(\`/orders\`)
             };
         `;
         fs.writeFileSync(path.join(definitionsDir, `${moduleName}.ts`), fileContent);
@@ -60,7 +58,7 @@ test('Project Service Tests', async (t) => {
 
         assert.ok(manifest[moduleName].get_list, 'get_list should exist');
         assert.strictEqual(manifest[moduleName].get_list.url, '/orders', 'URL should be extracted');
-        assert.strictEqual(manifest[moduleName].get_list.client, 'API_CLIENT', 'Client should be extracted');
+        assert.strictEqual(manifest[moduleName].get_list.client, 'apiClient', 'Client should be extracted');
     });
 
     await t.test('generateManifest expands recursive types', async () => {
@@ -68,7 +66,7 @@ test('Project Service Tests', async (t) => {
         t.after(() => fs.rmSync(definitionsDir, { recursive: true, force: true }));
 
         fs.writeFileSync(path.join(definitionsDir, 'complexTypes.ts'), `
-            import { handleApiCall, BASE_CLIENT } from '../config/utils';
+            import { BASE_CLIENT } from '../config/utils';
 
             interface Address {
                 street: string;
@@ -82,7 +80,7 @@ test('Project Service Tests', async (t) => {
 
             export const complexTypesApi = {
                 createUser: (data: { name: string, metadata: { role: string } }, profile: User) => 
-                    handleApiCall(() => BASE_CLIENT.post('/users', { data }), 'createUser')
+                    BASE_CLIENT.post('/users', { data })
             };
         `);
 

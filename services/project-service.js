@@ -57,40 +57,47 @@ class ProjectService {
                                         let url = "";
                                         let method = "GET"; // Default
 
-                                        // Look for: const url = "/path";
-                                        const variableStatements = funcNode.getBody().getDescendantsOfKind(SyntaxKind.VariableStatement);
-                                        for (const stmt of variableStatements) {
-                                            const decl = stmt.getDeclarations()[0];
-                                            if (decl.getName() === "url") {
-                                                const init = decl.getInitializer();
-                                                if (init) {
-                                                    if (init.getKind() === SyntaxKind.StringLiteral || init.getKind() === SyntaxKind.NoSubstitutionTemplateLiteral) {
-                                                        url = init.getLiteralValue();
-                                                    } else if (init.getKind() === SyntaxKind.TemplateExpression) {
-                                                        // Handle `path${query}` -> extract full text including ${}
-                                                        // We want the raw source text of the template literal, but usually without the backticks if possible, 
-                                                        // or just the text representation. getText() includes backticks.
-                                                        url = init.getText().replace(/^`|`$/g, '');
-                                                    }
-                                                }
-                                            }
+                                        // Extract URL, client, and method from inline apiClient.method(`/path`) calls
+                                        // Generated definitions use: apiClient.get(`/api/v1/path`)
+                                        //                       or: apiClient.post(`/api/v1/path/${id}`, payload)
+                                        const body = funcNode.getBody();
+                                        const callExprs = [];
+                                        // Concise arrow functions (no block body) have the CallExpression as the body itself
+                                        // getDescendantsOfKind does NOT include the node itself, so we must check it explicitly
+                                        if (body.getKind() === SyntaxKind.CallExpression) {
+                                            callExprs.push(body);
                                         }
+                                        callExprs.push(...body.getDescendantsOfKind(SyntaxKind.CallExpression));
 
-                                        // Look for: handleApiCall(() => CLIENT.method(url), ...)
-                                        const callExprs = funcNode.getBody().getDescendantsOfKind(SyntaxKind.CallExpression);
                                         for (const call of callExprs) {
-                                            if (call.getExpression().getText() === "handleApiCall") {
-                                                // First arg is arrow function: () => CLIENT.method(...)
-                                                const firstArg = call.getArguments()[0];
-                                                if (firstArg && (firstArg.getKind() === SyntaxKind.ArrowFunction || firstArg.getKind() === SyntaxKind.FunctionExpression)) {
-                                                    const innerCall = firstArg.getBody(); // CLIENT.method(url)
-                                                    if (innerCall.getKind() === SyntaxKind.CallExpression) {
-                                                        const expr = innerCall.getExpression(); // CLIENT.method (PropertyAccessExpression)
-                                                        if (expr.getKind() === SyntaxKind.PropertyAccessExpression) {
-                                                            client = expr.getExpression().getText(); // CLIENT
-                                                            method = expr.getName().toUpperCase(); // method (get, post, etc.)
+                                            const expr = call.getExpression();
+
+                                            if (expr.getKind() === SyntaxKind.PropertyAccessExpression) {
+                                                const methodName = expr.getName();
+                                                const objectName = expr.getExpression().getText();
+
+                                                // Match CLIENT.get/post/put/delete/patch calls
+                                                if (["get", "post", "put", "delete", "patch"].includes(methodName)) {
+                                                    client = objectName;
+                                                    method = methodName.toUpperCase();
+
+                                                    // Extract URL from first argument (template literal or string)
+                                                    const firstArg = call.getArguments()[0];
+                                                    if (firstArg) {
+                                                        if (firstArg.getKind() === SyntaxKind.NoSubstitutionTemplateLiteral) {
+                                                            url = firstArg.getLiteralValue();
+                                                        } else if (firstArg.getKind() === SyntaxKind.TemplateExpression) {
+                                                            // Handle `/path/${id}/retry` -> reconstruct with ${param} syntax
+                                                            let reconstructed = firstArg.getHead().getLiteralText();
+                                                            for (const span of firstArg.getTemplateSpans()) {
+                                                                reconstructed += "${" + span.getExpression().getText() + "}" + span.getLiteral().getLiteralText();
+                                                            }
+                                                            url = reconstructed;
+                                                        } else if (firstArg.getKind() === SyntaxKind.StringLiteral) {
+                                                            url = firstArg.getLiteralValue();
                                                         }
                                                     }
+                                                    break; // Found the API call, stop searching
                                                 }
                                             }
                                         }

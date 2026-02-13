@@ -26,7 +26,6 @@ class GeneratorService {
     const constantsPath = path.join(configDir, 'constants.ts');
     const corePath = path.join(configDir, 'core.ts');
     const clientsPath = path.join(configDir, 'clients.ts');
-    const utilsPath = path.join(configDir, 'utils.ts');
     const providersDir = path.join(apiTargetDir, 'src', 'api-services', 'providers');
     const queryProviderPath = path.join(providersDir, 'QueryProvider.tsx');
 
@@ -46,50 +45,284 @@ export const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.exam
         console.log("[Generator] Scaffoled config/constants.ts");
       }
 
+      // 1b. token-providers.ts - Auth Strategies
+      const tokenProvidersPath = path.join(configDir, 'token-providers.ts');
+      if (!fs.existsSync(tokenProvidersPath)) {
+        const tokenProvidersContent = `
+import { TokenProvider } from "./core";
+import { getCookie } from "cookies-next";
+
+/**
+ * Cookie-based token provider
+ * Assumes the access token is stored in a cookie named 'access_token'
+ */
+export const cookieTokenProvider: TokenProvider = {
+  getToken: () => {
+    // Check if running in browser
+    if (typeof window !== "undefined") {
+      return getCookie("access_token") as string | null;
+    }
+    // Server-side logic would go here (e.g. reading from request headers)
+    return null;
+  }
+};
+`;
+        fs.writeFileSync(tokenProvidersPath, tokenProvidersContent);
+        console.log("[Generator] Scaffoled config/token-providers.ts");
+      }
+
       // 2. core.ts - User Managed (Interceptors), imports constants
       if (!fs.existsSync(corePath)) {
         const coreContent = `
+// lib/api/core.ts
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import axios, {
   AxiosInstance,
   InternalAxiosRequestConfig,
-  AxiosResponse,
   AxiosError,
+  AxiosRequestConfig,
 } from "axios";
 import { baseURL } from "./constants";
 
-const DEFAULT_CONFIG = {
-  baseURL,
+/**
+ * Token provider interface - allows swapping auth strategies without changing core logic
+ */
+export interface TokenProvider {
+  /**
+   * Retrieve the current access token
+   * @returns Access token string or null if not available
+   */
+  getToken: () => Promise<string | null> | string | null;
+
+  /**
+   * Refresh the access token when it expires
+   * @returns New access token or null if refresh failed
+   */
+  refreshToken?: () => Promise<string | null>;
+}
+
+/**
+ * Standardized API error shape
+ */
+export interface ApiError {
+  message: string;
+  code?: string;
+  statusCode?: number;
+  originalError?: unknown;
+}
+
+const DEFAULT_CONFIG: AxiosRequestConfig = {
+  baseURL: baseURL,
   timeout: 30000,
   headers: { "Content-Type": "application/json" },
 };
 
-// 1. Create a factory function to avoid repeating interceptor logic
-export const createClient = (path: string = ""): AxiosInstance => {
-  const client = axios.create({
-    ...DEFAULT_CONFIG,
-    baseURL: path ? \`\${baseURL}\${path}\` : baseURL,
-  });
+/**
+ * Timeout for queued requests waiting for token refresh (in milliseconds)
+ * If refresh takes longer than this, queued requests will be rejected
+ */
+const REFRESH_TIMEOUT = 10000; // 10 seconds
 
-  // Request Interceptor: Auth
-  client.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-    if (typeof window !== "undefined") {
-      // You might pull this from a redux or zustand store or a cookie helper
-      const token = localStorage.getItem("token");
-      if (token && config.headers) {
-        config.headers.Authorization = \`Bearer \${token}\`;
+/**
+ * Creates a configured Axios client with authentication and error handling
+ *
+ * Features:
+ * - Automatic token injection via TokenProvider
+ * - Auto-retry on 401 with token refresh
+ * - Concurrent request handling (prevents multiple simultaneous refresh calls)
+ * - Queue timeout protection (prevents infinite waiting)
+ * - Standardized error normalization
+ * - Response data auto-unwrapping
+ * - Request/response logging in development
+ *
+ * Concurrent Request Flow:
+ * 1. First 401 → Starts token refresh, sets isRefreshing = true
+ * 2. Subsequent 401s → Queued while refresh is in progress
+ * 3. Refresh completes → All queued requests retry with new token
+ * 4. Refresh fails → All queued requests are rejected
+ *
+ * @param tokenProvider - Optional auth token provider
+ * @returns Configured Axios instance
+ */
+export const createApiClient = (
+  tokenProvider?: TokenProvider,
+): AxiosInstance => {
+  const client = axios.create(DEFAULT_CONFIG);
+
+  // ==================== CONCURRENT REFRESH HANDLING STATE ====================
+  /**
+   * Flag to track if a token refresh is currently in progress
+   * Prevents multiple simultaneous refresh requests
+   */
+  let isRefreshing = false;
+
+  /**
+   * Queue of failed requests waiting for token refresh to complete
+   * Each request can be resolved with new token or rejected on refresh failure
+   */
+  let failedQueue: Array<{
+    resolve: (token: string | null) => void;
+    reject: (error: any) => void;
+  }> = [];
+
+  /**
+   * Process all queued requests after token refresh completes
+   * @param error - Error if refresh failed, null if successful
+   * @param token - New token if refresh succeeded, null if failed
+   */
+  const processQueue = (error: any, token: string | null = null) => {
+    failedQueue.forEach((prom) => {
+      if (error) {
+        prom.reject(error);
+      } else {
+        prom.resolve(token);
       }
-    }
-    return config;
-  });
+    });
+    failedQueue = [];
+  };
 
-  // Response Interceptor: Error Handling
-  client.interceptors.response.use(
-    (response: AxiosResponse) => response,
-    (error: AxiosError) => {
-      return Promise.reject(error);
+  // ==================== REQUEST INTERCEPTOR ====================
+  client.interceptors.request.use(
+    async (config: InternalAxiosRequestConfig) => {
+      // Inject authentication token if provider exists
+      if (tokenProvider) {
+        const token = await tokenProvider.getToken();
+        if (token && config.headers) {
+          config.headers.Authorization = \`Bearer \${token}\`;
+        }
+      }
+
+      // Log requests in development mode
+      if (process.env.NODE_ENV === "development") {
+        console.log(
+          \`[API Request] \${config.method?.toUpperCase()} \${config.url}\`,
+          config.params || config.data,
+        );
+      }
+
+      return config;
     },
+    (error) => Promise.reject(error),
   );
 
+  // ==================== RESPONSE INTERCEPTOR ====================
+  client.interceptors.response.use(
+    (response) => {
+      // Log successful responses in development
+      if (process.env.NODE_ENV === "development") {
+        console.log(
+          \`[API Success] \${response.config.method?.toUpperCase()} \${response.config.url}\`,
+          response.data,
+        );
+      }
+
+      // Auto-unwrap response.data to simplify API calls
+      return response.data;
+    },
+    async (error: AxiosError) => {
+      const originalRequest = error.config as InternalAxiosRequestConfig & {
+        _retry?: boolean;
+      };
+
+      // ==================== HANDLE 401 UNAUTHORIZED ====================
+      if (
+        error.response?.status === 401 &&
+        !originalRequest._retry &&
+        tokenProvider?.refreshToken
+      ) {
+        // ========== CASE A: REFRESH ALREADY IN PROGRESS ==========
+        // Queue this request and wait for the ongoing refresh to complete
+        if (isRefreshing) {
+          return new Promise<string | null>((resolve, reject) => {
+            // Add timeout to prevent infinite waiting
+            const timeoutId = setTimeout(() => {
+              reject(
+                new Error("Token refresh timeout - request took too long"),
+              );
+            }, REFRESH_TIMEOUT);
+
+            failedQueue.push({
+              resolve: (token) => {
+                clearTimeout(timeoutId);
+                resolve(token);
+              },
+              reject: (err) => {
+                clearTimeout(timeoutId);
+                reject(err);
+              },
+            });
+          })
+            .then((token) => {
+              // Retry request with new token
+              if (token && originalRequest.headers) {
+                originalRequest.headers.Authorization = \`Bearer \${token}\`;
+              }
+              return client(originalRequest);
+            })
+            .catch((err) => Promise.reject(err));
+        }
+
+        // ========== CASE B: FIRST 401 - START REFRESH ==========
+        originalRequest._retry = true;
+        isRefreshing = true;
+
+        try {
+          // Attempt to refresh the token
+          const newToken = await tokenProvider.refreshToken();
+
+          if (newToken && originalRequest.headers) {
+            originalRequest.headers.Authorization = \`Bearer \${newToken}\`;
+
+            // Flush the queue with the new token
+            processQueue(null, newToken);
+
+            // Retry the original request
+            return client(originalRequest);
+          }
+
+          // If no token returned, treat as failure
+          throw new Error("Refresh failed to return a valid token");
+        } catch (refreshError) {
+          // Flush queue with error
+          processQueue(refreshError, null);
+
+          // Force logout on fatal refresh error
+          if (typeof window !== "undefined") {
+            // Dispatch global event so React/Next.js can handle redirect smoothly
+            window.dispatchEvent(new Event("auth:logout"));
+          }
+          return Promise.reject(refreshError);
+        } finally {
+          isRefreshing = false;
+        }
+      }
+
+      // ==================== NORMALIZE ERROR SHAPE ====================
+      const responseData = error.response?.data as any;
+      const apiError: ApiError = {
+        message:
+          responseData?.message ||
+          error.message ||
+          "An unexpected error occurred",
+        code: responseData?.code,
+        statusCode: error.response?.status,
+        originalError: error,
+      };
+
+      // Log error with context
+      if (originalRequest) {
+        const endpoint = \`\${originalRequest.method?.toUpperCase()} \${originalRequest.url}\`;
+        console.error(\`[API ERROR - \${endpoint}]\`, {
+          message: apiError.message,
+          code: apiError.code,
+          statusCode: apiError.statusCode,
+        });
+      }
+
+      // Throw normalized error (React Query will catch this)
+      throw apiError;
+    },
+  );
 
   return client;
 };
@@ -101,9 +334,10 @@ export const createClient = (path: string = ""): AxiosInstance => {
       // clients.ts - SCAFFOLD ONLY (Generator manages this)
       if (!fs.existsSync(clientsPath)) {
         const clientsContent = `
-import { createClient } from "./core";
+import { createApiClient } from "./core";
+import { cookieTokenProvider } from "./token-providers";
 
-// Auto-generated clients will be added here
+export const apiClient = createApiClient(cookieTokenProvider);
 `;
         fs.writeFileSync(clientsPath, clientsContent);
         console.log("[Generator] Scaffoled config/clients.ts");
@@ -114,89 +348,12 @@ import { createClient } from "./core";
       const indexContent = `
 export * from "./core";
 export * from "./clients";
-export * from "./utils";
 `;
       fs.writeFileSync(indexTimePath, indexContent);
       console.log("[Generator] Updated config/index.ts");
 
 
-      // utils.ts
-      if (!fs.existsSync(utilsPath)) {
-        const utilsContent = `
-import { AxiosResponse, isAxiosError } from "axios";
 
-export interface ApiError {
-  message: string;
-  code?: string;
-  statusCode?: number;
-  originalError?: unknown; // Optional: useful for debugging
-}
-
-export interface ApiResponse<T> {
-  data?: T;
-  error?: ApiError;
-}
-
-/**
- * Standard API Wrapper
- */
-export const handleApiCall = async <T>(
-  fn: () => Promise<AxiosResponse<T>>,
-  label: string,
-): Promise<ApiResponse<T>> => {
-  try {
-    const res = await fn();
-    return { data: res.data };
-  } catch (err: unknown) {
-    return { error: handleError(err, label) };
-  }
-};
-
-export const handleError = (error: unknown, label: string): ApiError => {
-  let message = "An unexpected error occurred";
-  let code: string | undefined;
-  let statusCode: number | undefined;
-
-  if (isAxiosError(error)) {
-    const data = error.response?.data;
-    message = data?.message || error.message || message;
-    code = data?.code;
-    statusCode = error.response?.status;
-  } else if (error instanceof Error) {
-    message = error.message;
-  }
-
-  console.error(\`[API ERROR - \${label}]\`, { message, code, statusCode });
-  return { message, code, statusCode };
-};
-
-/**
- * Handle query params
- */
-export const constructQueryParams = (
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  payload: Record<string, any>,
-): string => {
-  const params = new URLSearchParams();
-
-  Object.entries(payload).forEach(([k, v]) => {
-    if (
-      v !== undefined &&
-      v !== null &&
-      v !== "" &&
-      !(Array.isArray(v) && v.length === 0)
-    ) {
-      params.append(k, String(v));
-    }
-  });
-
-  const query = params.toString();
-  return query ? \`?\${query}\` : "";
-};
-`;
-        fs.writeFileSync(utilsPath, utilsContent);
-        console.log("[Generator] Scaffoled config/utils.ts");
-      }
 
       // 2. Generate Manifest
       // Prune definition files first (remove unused interfaces/imports)
@@ -216,11 +373,12 @@ export const constructQueryParams = (
       // 4. Regenerate Barrel File (src/api-services/index.ts)
       const moduleNames = Object.keys(manifest).sort();
       const barrelContent = `export * from "./config";
-export * from "./config/utils";
+export * from "./config";
+
 
 ${moduleNames.map((name) => `import { ${name}Api } from "./definitions/${name}";`).join('\n')}
 
-export const apiClient = {
+export const api = {
 ${moduleNames.map((name) => `  ...${name}Api,`).join('\n')}
 };
 `;
@@ -263,6 +421,8 @@ export function QueryProvider({ children }: { children: ReactNode }) {
         const packagesToInstall = [];
         if (!allDeps['axios']) packagesToInstall.push('axios');
         if (!allDeps['@tanstack/react-query']) packagesToInstall.push('@tanstack/react-query');
+        if (!allDeps['cookies-next']) packagesToInstall.push('cookies-next');
+        if (!allDeps['next-auth']) packagesToInstall.push('next-auth');
 
         if (packagesToInstall.length > 0) {
           console.log(`[Generator] Missing dependencies: ${packagesToInstall.join(', ')}. Installing...`);
