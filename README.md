@@ -124,7 +124,7 @@ function UserList() {
 | Mode | Use Case |
 |------|----------|
 | **Project Mode** | Full integration with your codebase (requires `reex-build` CLI) |
-| **Standalone Mode** | Quick API testing without a project – [try it online](https://reex-api-builder.vercel.app/) |
+| **Standalone Mode** | Quick API testing without a project – [try it online](https://reex-api-builder.toolshq.app/) |
 | **Text Mode** | Scratchpad for ad-hoc API testing |
 
 ## Requirements
@@ -134,8 +134,8 @@ function UserList() {
 
 ## Links
 
-- 📖 [Full Documentation](https://reex-api-builder.vercel.app/docs)
-- 🌐 [Web UI (Standalone Mode)](https://reex-api-builder.vercel.app/)
+- 📖 [Full Documentation](https://reex-api-builder.toolshq.app/docs)
+- 🌐 [Web UI (Standalone Mode)](https://reex-api-builder.toolshq.app/)
 - 🐛 [Report Issues](https://github.com/EECvision/reex-api-builder/issues)
 
 ## License
