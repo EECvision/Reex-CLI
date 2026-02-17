@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { localStorageTokenProvider } from "./LocalStorageTokenProvider";
+import { localStorageTokenProvider, ACCESS_TOKEN_KEY } from "./LocalStorageTokenProvider";
 
 /**
  * Authentication initialization wrapper for localStorage-based token provider
@@ -50,10 +50,10 @@ import { localStorageTokenProvider } from "./LocalStorageTokenProvider";
  *   const response = await loginApi(credentials);
  *
  *   // Store tokens
- *   localStorageTokenProvider.setTokens(
- *     response.accessToken,
- *     response.refreshToken
- *   );
+ *   localStorageTokenProvider.setTokens({
+ *     accessToken: response.accessToken,
+ *     refreshToken: response.refreshToken
+ *   });
  *
  *   // Set custom headers required by your backend
  *   localStorageTokenProvider.setCustomHeaders({
@@ -86,29 +86,23 @@ export const LocalStorageAuthGuard = ({
          * Restores session by exchanging refresh token for access token
          */
         const initAuth = async () => {
-            // Check if user has an existing session (refresh token in storage)
-            // Update this key to match REFRESH_TOKEN_KEY in token-providers.ts
+            // 1. Check for Refresh Token
             const hasRefreshToken = !!localStorage.getItem("refresh_token");
+
+            // 2. Check for Access Token (in case backend is access-token only)
+            const hasAccessToken = !!localStorage.getItem(ACCESS_TOKEN_KEY);
 
             if (hasRefreshToken && localStorageTokenProvider?.refreshToken) {
                 try {
                     // Exchange refresh token for new access token
-                    // This populates the in-memory accessToken variable
                     await localStorageTokenProvider.refreshToken();
-
-                    // OPTIONAL: Set custom headers if needed at initialization
-                    // Uncomment and modify based on your backend requirements:
-                    /*
-                    localStorageTokenProvider.setCustomHeaders({
-                      'x-session-key': 'value-from-somewhere',
-                      'x-tenant-id': 'tenant-123'
-                    });
-                    */
                 } catch (error) {
-                    // Refresh failed - token likely expired or invalid
-                    // clearTokens() already called by refreshToken() on failure
                     console.warn("Session restoration failed:", error);
                 }
+            } else if (hasAccessToken && localStorageTokenProvider?.refreshToken) {
+                // If we only have an access token, allow the provider to "restore" it
+                // (Our modified refreshToken method will pick it up from storage)
+                await localStorageTokenProvider.refreshToken();
             }
 
             // Mark initialization complete regardless of outcome

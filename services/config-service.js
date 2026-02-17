@@ -20,28 +20,21 @@ class ConfigService {
         if (!fs.existsSync(configDir)) fs.mkdirSync(configDir, { recursive: true });
 
         // Force Single Client Generation
-        const clientsContent = `
-import { createApiClient } from "./core";
-import { cookieTokenProvider } from "../providers/CookieAuth/CookieTokenProvider";
+        const templateClientsPath = path.join(__dirname, '../templates/config/clients.ts');
+        let clientsContent = "";
 
-// Choose the appropriate token provider for your authentication strategy:
-
-// Option 1: Cookie-based auth (default)
-// Server manages refresh tokens via httpOnly cookies
-export const apiClient = createApiClient(cookieTokenProvider);
-
-// Option 2: NextAuth.js
-// Uncomment if using NextAuth.js for session management:
-// import { nextAuthTokenProvider } from "../providers/NextAuth/NextAuthTokenProvider";
-// export const apiClient = createApiClient(nextAuthTokenProvider);
-
-// Option 3: LocalStorage-based auth
-// Client-side token management with refresh token in localStorage:
-// import { localStorageTokenProvider } from "../providers/LocalStorageAuth/LocalStorageTokenProvider";
-// export const apiClient = createApiClient(localStorageTokenProvider);
-// Note: Call localStorageTokenProvider.setTokens() after login
-// Call localStorageTokenProvider.clearTokens() on logout
-`;
+        if (fs.existsSync(templateClientsPath)) {
+            clientsContent = fs.readFileSync(templateClientsPath, 'utf8');
+        } else {
+            // Fallback if template missing (should not happen if set up correctly)
+            console.warn("[ConfigService] Warning: templates/config/clients.ts not found. Using fallback.");
+            clientsContent = `
+ import { createApiClient } from "./core";
+ import { cookieTokenProvider } from "../providers/CookieAuth/CookieTokenProvider";
+ 
+ export const apiClient = createApiClient(cookieTokenProvider);
+ `;
+        }
 
         const currentContent = fs.existsSync(clientsPath) ? fs.readFileSync(clientsPath, 'utf8') : "";
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { cookieTokenProvider } from "./CookieTokenProvider";
+import { cookieTokenProvider, ACCESS_TOKEN_KEY } from "./CookieTokenProvider";
 
 /**
  * Authentication initialization wrapper for cookie-based token provider
@@ -10,13 +10,13 @@ import { cookieTokenProvider } from "./CookieTokenProvider";
  * Ensures access token is loaded into memory before rendering the app.
  * Since cookieTokenProvider stores access tokens in memory, they're lost
  * on page refresh. This component restores the token on app mount by
- * calling the refresh endpoint.
+ * calling the refresh endpoint (or falling back to localStorage).
  *
  * How it works:
  * 1. Blocks rendering with loading state
  * 2. Calls refresh endpoint to get new access token from httpOnly cookie
- * 3. Stores token in memory via cookieTokenProvider
- * 4. Optionally sets custom headers if needed
+ * 3. FALLBACK: If cookie refresh fails, checks localStorage for persisted access token
+ * 4. Stores token in memory via cookieTokenProvider
  * 5. Renders children once token is restored (or refresh fails gracefully)
  *
  * Usage:
@@ -44,6 +44,12 @@ import { cookieTokenProvider } from "./CookieTokenProvider";
  * const handleLogin = async (credentials) => {
  *   const response = await loginApi(credentials);
  *
+ *   // Store tokens
+ *   cookieTokenProvider.setTokens({
+ *     accessToken: response.accessToken,
+ *     refreshToken: response.refreshToken
+ *   });
+ *
  *   // Set custom headers required by your backend
  *   cookieTokenProvider.setCustomHeaders({
  *     'x-session-key': response.sessionKey,
@@ -69,10 +75,12 @@ export const CookieAuthGuard = ({
         /**
          * Initialize authentication state on app mount
          * Attempts to restore access token from server-side refresh token cookie
+         * or localStorage fallback.
          */
         const initAuth = async () => {
             try {
                 // Call refresh endpoint to restore access token in memory
+                // Logic updated to fallback to localStorage if cookie refresh fails
                 await cookieTokenProvider.refreshToken?.();
 
                 // OPTIONAL: Set custom headers if needed at initialization

@@ -8,10 +8,32 @@ declare module "next-auth" {
     }
 }
 // TokenProvider for NextAuth.js - retrieves token from session
-export const nextAuthTokenProvider: TokenProvider = {
+interface NextAuthTokenProvider extends TokenProvider {
+    setTokens: (params: { accessToken: string; refreshToken?: string }) => void;
+    clearTokens: () => void;
+}
+
+export const nextAuthTokenProvider: NextAuthTokenProvider = {
     getToken: async () => {
         const session = await getSession();
         return (session?.accessToken as string) || null;
     },
     refreshToken: undefined,
+
+    // Placeholder methods for compatibility with other providers
+    // NextAuth manages these internally via session
+    setTokens: () => {
+        if (process.env.NODE_ENV === "development") {
+            console.warn(
+                "[NextAuthTokenProvider] setTokens is a no-op. NextAuth manages tokens via session.",
+            );
+        }
+    },
+    clearTokens: () => {
+        if (process.env.NODE_ENV === "development") {
+            console.warn(
+                "[NextAuthTokenProvider] clearTokens is a no-op. Use signOut() from next-auth/react instead.",
+            );
+        }
+    },
 };
