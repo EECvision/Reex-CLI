@@ -1,4 +1,3 @@
-
 // lib/api/core.ts
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import axios, {
@@ -7,7 +6,10 @@ import axios, {
     AxiosError,
     AxiosRequestConfig,
 } from "axios";
-import { baseURL, API_TIMEOUT, REFRESH_TIMEOUT } from "./constants";
+import { baseURL } from "./constants";
+
+const API_TIMEOUT = 30000;
+const REFRESH_TIMEOUT = 10000;
 
 /**
  * Token provider interface for pluggable authentication strategies
@@ -33,7 +35,9 @@ export interface TokenProvider {
      * 'x-workspace-id': 'workspace-789'
      * })
      */
-    getCustomHeaders?: () => Promise<Record<string, string>> | Record<string, string>;
+    getCustomHeaders?: () =>
+        | Promise<Record<string, string>>
+        | Record<string, string>;
 
     /**
      * Set custom headers to be injected into all API requests
@@ -139,16 +143,18 @@ export const createApiClient = (
     // ==================== RESPONSE INTERCEPTOR ====================
     client.interceptors.response.use(
         (response) => {
+            // Unwrap response.data for cleaner API calls
+            const res = response?.data?.data ?? response?.data;
+
             // Development logging
             if (process.env.NODE_ENV === "development") {
                 console.log(
                     `[API Success] ${response.config.method?.toUpperCase()} ${response.config.url}`,
-                    response.data,
+                    res,
                 );
             }
 
-            // Unwrap response.data for cleaner API calls
-            return response.data;
+            return res;
         },
         async (error: AxiosError) => {
             const originalRequest = error.config as InternalAxiosRequestConfig & {
