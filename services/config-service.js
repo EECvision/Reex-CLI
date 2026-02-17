@@ -22,7 +22,7 @@ class ConfigService {
         // Force Single Client Generation
         const clientsContent = `
 import { createApiClient } from "./core";
-import { cookieTokenProvider } from "./token-providers";
+import { cookieTokenProvider } from "../providers/CookieAuth/CookieTokenProvider";
 
 // Choose the appropriate token provider for your authentication strategy:
 
@@ -32,12 +32,12 @@ export const apiClient = createApiClient(cookieTokenProvider);
 
 // Option 2: NextAuth.js
 // Uncomment if using NextAuth.js for session management:
-// import { nextAuthTokenProvider } from "./token-providers";
+// import { nextAuthTokenProvider } from "../providers/NextAuth/NextAuthTokenProvider";
 // export const apiClient = createApiClient(nextAuthTokenProvider);
 
 // Option 3: LocalStorage-based auth
 // Client-side token management with refresh token in localStorage:
-// import { localStorageTokenProvider } from "./token-providers";
+// import { localStorageTokenProvider } from "../providers/LocalStorageAuth/LocalStorageTokenProvider";
 // export const apiClient = createApiClient(localStorageTokenProvider);
 // Note: Call localStorageTokenProvider.setTokens() after login
 // Call localStorageTokenProvider.clearTokens() on logout
@@ -46,7 +46,7 @@ export const apiClient = createApiClient(cookieTokenProvider);
         const currentContent = fs.existsSync(clientsPath) ? fs.readFileSync(clientsPath, 'utf8') : "";
 
         if (currentContent.trim() !== clientsContent.trim()) {
-            fs.writeFileSync(clientsPath, newContent);
+            fs.writeFileSync(clientsPath, clientsContent);
             console.log(`[ConfigService] Updated clients.ts (Content Changed)`);
         }
 
