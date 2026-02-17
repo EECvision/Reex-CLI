@@ -248,7 +248,7 @@ ${hooks.join("\n\n")}
   }
 
   generateIndexFile(generatedDir, exportLines) {
-    const content = `/* eslint-disable @typescript-eslint/no-explicit-any */
+    const content = `
 // Generated file - DO NOT EDIT
 import {
   type QueryKey,
