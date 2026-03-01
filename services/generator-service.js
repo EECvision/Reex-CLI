@@ -42,6 +42,7 @@ class GeneratorService {
     const constantsPath = path.join(configDir, 'constants.ts');
     const corePath = path.join(configDir, 'core.ts');
     const clientsPath = path.join(configDir, 'clients.ts');
+    const authConfigPath = path.join(configDir, 'authConfig.ts');
     const providersDir = path.join(apiTargetDir, 'src', 'api-services', 'providers');
 
     try {
@@ -75,6 +76,15 @@ class GeneratorService {
         if (fs.existsSync(templateClientsPath)) {
           fs.copyFileSync(templateClientsPath, clientsPath);
           console.log("[Generator] Scaffoled config/clients.ts from template");
+        }
+      }
+
+      // authConfig.ts - SCAFFOLD ONLY
+      if (!fs.existsSync(authConfigPath)) {
+        const templateAuthConfigPath = path.join(__dirname, '../templates/config/authConfig.ts');
+        if (fs.existsSync(templateAuthConfigPath)) {
+          fs.copyFileSync(templateAuthConfigPath, authConfigPath);
+          console.log("[Generator] Scaffoled config/authConfig.ts from template");
         }
       }
 
@@ -129,6 +139,34 @@ ${moduleNames.map((name) => `  ...${name}Api,`).join('\n')}
         console.log("[Generator] Copied providers from templates");
       } else {
         console.warn("[Generator] Warning: templates/providers directory not found");
+      }
+
+      // 7b. Hooks (Copy from templates)
+      const hooksDir = path.join(apiTargetDir, 'src', 'api-services', 'hooks');
+      if (!fs.existsSync(hooksDir)) {
+        fs.mkdirSync(hooksDir, { recursive: true });
+      }
+
+      const templateHooksDir = path.join(__dirname, '../templates/hooks');
+      if (fs.existsSync(templateHooksDir)) {
+        this.copyRecursiveSync(templateHooksDir, hooksDir);
+        console.log("[Generator] Copied hooks from templates");
+      } else {
+        console.warn("[Generator] Warning: templates/hooks directory not found");
+      }
+
+      // 7c. Auth (Copy from templates)
+      const authDir = path.join(apiTargetDir, 'src', 'api-services', 'auth');
+      if (!fs.existsSync(authDir)) {
+        fs.mkdirSync(authDir, { recursive: true });
+      }
+
+      const templateAuthDir = path.join(__dirname, '../templates/auth');
+      if (fs.existsSync(templateAuthDir)) {
+        this.copyRecursiveSync(templateAuthDir, authDir);
+        console.log("[Generator] Copied auth from templates");
+      } else {
+        console.warn("[Generator] Warning: templates/auth directory not found");
       }
 
       // 8. Install Dependencies (axios, @tanstack/react-query)

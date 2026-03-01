@@ -1,3 +1,4 @@
+// @internal — No changes needed
 import { TokenProvider } from "../../config";
 import { getSession } from "next-auth/react";
 

@@ -1,21 +1,18 @@
+// @user-config — changes needed: Uncomment the auth strategy that matches your authentication strategy
+
+/**
+ * Available auth strategies:
+ *   cookieTokenProvider       → httpOnly cookie, server-managed refresh tokens
+ *   nextAuthTokenProvider     → NextAuth.js session management
+ *   localStorageTokenProvider → client-side token storage with refresh in localStorage
+ */
 
 import { createApiClient } from "./core";
-import { cookieTokenProvider } from "../providers/CookieAuth/CookieTokenProvider";
+// import { cookieTokenProvider }        from "../auth/CookieAuth/CookieTokenProvider";
+// import { nextAuthTokenProvider }      from "../auth/NextAuth/NextAuthTokenProvider";
+import { localStorageTokenProvider } from "../auth/LocalStorageAuth/LocalStorageTokenProvider";
 
-// Choose the appropriate token provider for your authentication strategy:
+export const activeTokenProvider = localStorageTokenProvider;
 
-// Option 1: Cookie-based auth (default)
-// Server manages refresh tokens via httpOnly cookies
-export const apiClient = createApiClient(cookieTokenProvider);
-
-// Option 2: NextAuth.js
-// Uncomment if using NextAuth.js for session management:
-// import { nextAuthTokenProvider } from "../providers/NextAuth/NextAuthTokenProvider";
-// export const apiClient = createApiClient(nextAuthTokenProvider);
-
-// Option 3: LocalStorage-based auth
-// Client-side token management with refresh token in localStorage:
-// import { localStorageTokenProvider } from "../providers/LocalStorageAuth/LocalStorageTokenProvider";
-// export const apiClient = createApiClient(localStorageTokenProvider);
-// Note: Call localStorageTokenProvider.setTokens() after login
-// Call localStorageTokenProvider.clearTokens() on logout
+/** Configured API client using the active token provider */
+export const apiClient = createApiClient(activeTokenProvider);
