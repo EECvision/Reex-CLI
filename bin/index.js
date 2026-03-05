@@ -37,8 +37,8 @@ program
     startServer(port);
 
     // Open the Hosted UI
-    // const clientUrl = `https://reex-api-builder.toolshq.app/?localPort=${port}`;
-    const clientUrl = `http://localhost:3000/?localPort=${port}`;
+    const clientUrl = `https://reex-api-builder.toolshq.app/?localPort=${port}`;
+    // const clientUrl = `http://localhost:3000/?localPort=${port}`;
 
     if (options.open !== false) {
       console.log(`\n🌐 Opening UI: ${clientUrl}`);

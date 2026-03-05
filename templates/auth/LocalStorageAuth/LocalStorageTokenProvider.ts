@@ -5,82 +5,93 @@ import { authConfig } from "../../config/authConfig";
 /**
  * LocalStorage Token Provider
  * - Access Token & Refresh Token: Persisted in localStorage
- * 
+ *
  * Edit `authConfig.ts` to customize routes, storage keys, and refresh payload.
  */
 
 let accessToken: string | null = null;
 
 interface LocalStorageTokenProvider extends TokenProvider {
-    setTokens: (params: { accessToken: string; refreshToken?: string }) => void;
-    clearTokens: () => void;
+  setTokens: (params: { accessToken: string; refreshToken?: string }) => void;
+  clearTokens: () => void;
 }
 
 export const localStorageTokenProvider: LocalStorageTokenProvider = {
-    getToken: () => {
-        if (accessToken) return accessToken;
-        if (typeof window !== "undefined") {
-            return localStorage.getItem(authConfig.accessTokenKey);
+  getToken: () => {
+    if (accessToken) return accessToken;
+    if (typeof window !== "undefined") {
+      return localStorage.getItem(authConfig.accessTokenKey);
+    }
+    return null;
+  },
+
+  // Called on login/signup success
+  setTokens: ({ accessToken: newAccessToken, refreshToken }) => {
+    accessToken = newAccessToken;
+    if (typeof window !== "undefined") {
+      if (refreshToken) {
+        localStorage.setItem(authConfig.refreshTokenKey, refreshToken);
+        localStorage.removeItem(authConfig.accessTokenKey);
+      } else {
+        localStorage.setItem(authConfig.accessTokenKey, newAccessToken);
+        localStorage.removeItem(authConfig.refreshTokenKey);
+      }
+    }
+  },
+
+  // Called on logout
+  clearTokens: () => {
+    accessToken = null;
+    if (typeof window !== "undefined") {
+      localStorage.removeItem(authConfig.refreshTokenKey);
+      localStorage.removeItem(authConfig.accessTokenKey);
+    }
+  },
+
+  // Exchange refresh token for a new access token
+  refreshToken: async () => {
+    try {
+      if (typeof window === "undefined") return null;
+
+      const storedRefreshToken = localStorage.getItem(
+        authConfig.refreshTokenKey,
+      );
+
+      // Fallback: use stored access token if no refresh token
+      if (!storedRefreshToken) {
+        const storedAccessToken = localStorage.getItem(
+          authConfig.accessTokenKey,
+        );
+        if (storedAccessToken) {
+          accessToken = storedAccessToken;
+          return accessToken;
         }
-        return null;
-    },
+        throw new Error("No refresh token found");
+      }
 
-    // Called on login/signup success
-    setTokens: ({ accessToken: newAccessToken, refreshToken }) => {
-        accessToken = newAccessToken;
-        if (typeof window !== "undefined") {
-            if (refreshToken) {
-                localStorage.setItem(authConfig.refreshTokenKey, refreshToken);
-                localStorage.removeItem(authConfig.accessTokenKey);
-            } else {
-                localStorage.setItem(authConfig.accessTokenKey, newAccessToken);
-                localStorage.removeItem(authConfig.refreshTokenKey);
-            }
-        }
-    },
+      const response = await authConfig.refreshWithPayload(storedRefreshToken);
 
-    // Called on logout
-    clearTokens: () => {
-        accessToken = null;
-        if (typeof window !== "undefined") {
-            localStorage.removeItem(authConfig.refreshTokenKey);
-            localStorage.removeItem(authConfig.accessTokenKey);
-        }
-    },
+      // Safely check if this is a raw Axios response wrapper
+      const isRawAxiosResponse =
+        response?.config && response?.headers && response?.status;
 
-    // Exchange refresh token for a new access token
-    refreshToken: async () => {
-        try {
-            if (typeof window === "undefined") return null;
+      const unwrappedData = isRawAxiosResponse ? response.data : response;
+      const responseData = unwrappedData?.data ?? unwrappedData;
 
-            const storedRefreshToken = localStorage.getItem(authConfig.refreshTokenKey);
+      const { accessToken: newAccess, refreshToken: newRefresh } = responseData;
+      accessToken = newAccess;
 
-            // Fallback: use stored access token if no refresh token
-            if (!storedRefreshToken) {
-                const storedAccessToken = localStorage.getItem(authConfig.accessTokenKey);
-                if (storedAccessToken) {
-                    accessToken = storedAccessToken;
-                    return accessToken;
-                }
-                throw new Error("No refresh token found");
-            }
+      if (newRefresh) {
+        localStorage.setItem(authConfig.refreshTokenKey, newRefresh);
+      }
 
-            const response = await authConfig.refreshWithPayload(storedRefreshToken);
-
-            const { accessToken: newAccess, refreshToken: newRefresh } = response.data;
-            accessToken = newAccess;
-
-            if (newRefresh) {
-                localStorage.setItem(authConfig.refreshTokenKey, newRefresh);
-            }
-
-            return accessToken;
-        } catch {
-            console.warn("Refresh failed, logging out...");
-            accessToken = null;
-            localStorage.removeItem(authConfig.refreshTokenKey);
-            localStorage.removeItem(authConfig.accessTokenKey);
-            return null;
-        }
-    },
+      return accessToken;
+    } catch {
+      console.warn("Refresh failed, logging out...");
+      accessToken = null;
+      localStorage.removeItem(authConfig.refreshTokenKey);
+      localStorage.removeItem(authConfig.accessTokenKey);
+      return null;
+    }
+  },
 };

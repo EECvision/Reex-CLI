@@ -1,4 +1,4 @@
-// @user-config — changes needed: Uncomment the auth strategy that matches your authentication strategy
+// @user-config — changes needed: Uncomment the auth strategy that matches your setup
 
 /**
  * Available auth strategies:

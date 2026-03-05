@@ -43,7 +43,16 @@ export const cookieTokenProvider: CookieTokenProvider = {
     refreshToken: async () => {
         try {
             const response = await authConfig.refreshWithCookie();
-            accessToken = response.data.accessToken;
+
+            // Safely check if this is a raw Axios response wrapper
+            const isRawAxiosResponse =
+                response?.config && response?.headers && response?.status;
+
+            const unwrappedData = isRawAxiosResponse ? response.data : response;
+            const responseData = unwrappedData?.data ?? unwrappedData;
+
+            accessToken = responseData.accessToken;
+
             if (typeof window !== "undefined" && accessToken) {
                 localStorage.setItem(authConfig.accessTokenKey, accessToken);
             }
