@@ -1,6 +1,6 @@
 // @internal — No changes needed
 import { TokenProvider } from "../../config";
-import { authConfig } from "../../config/authConfig";
+import { authConfig } from "../authConfig";
 
 /**
  * LocalStorage Token Provider
@@ -10,10 +10,13 @@ import { authConfig } from "../../config/authConfig";
  */
 
 let accessToken: string | null = null;
+let customHeaders: Record<string, string> | null = null;
 
 interface LocalStorageTokenProvider extends TokenProvider {
   setTokens: (params: { accessToken: string; refreshToken?: string }) => void;
   clearTokens: () => void;
+  setCustomHeaders: (headers: Record<string, string>) => void;
+  getCustomHeaders: () => Record<string, string>;
 }
 
 export const localStorageTokenProvider: LocalStorageTokenProvider = {
@@ -23,6 +26,28 @@ export const localStorageTokenProvider: LocalStorageTokenProvider = {
       return localStorage.getItem(authConfig.accessTokenKey);
     }
     return null;
+  },
+
+  getCustomHeaders: () => {
+    if (customHeaders) return customHeaders;
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("custom_headers");
+      if (stored) {
+        try {
+          return JSON.parse(stored);
+        } catch {
+          return {};
+        }
+      }
+    }
+    return {};
+  },
+
+  setCustomHeaders: (headers) => {
+    customHeaders = headers;
+    if (typeof window !== "undefined") {
+      localStorage.setItem("custom_headers", JSON.stringify(headers));
+    }
   },
 
   // Called on login/signup success
@@ -42,9 +67,11 @@ export const localStorageTokenProvider: LocalStorageTokenProvider = {
   // Called on logout
   clearTokens: () => {
     accessToken = null;
+    customHeaders = null;
     if (typeof window !== "undefined") {
       localStorage.removeItem(authConfig.refreshTokenKey);
       localStorage.removeItem(authConfig.accessTokenKey);
+      localStorage.removeItem("custom_headers");
     }
   },
 
@@ -69,7 +96,7 @@ export const localStorageTokenProvider: LocalStorageTokenProvider = {
         throw new Error("No refresh token found");
       }
 
-      const response = await authConfig.refreshWithPayload(storedRefreshToken);
+      const response = await authConfig.refreshWithToken(storedRefreshToken);
 
       // Safely check if this is a raw Axios response wrapper
       const isRawAxiosResponse =

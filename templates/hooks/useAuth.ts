@@ -3,7 +3,7 @@
 import { useCallback, useState, useEffect } from "react";
 import { useMutation, UseMutationOptions } from "@tanstack/react-query";
 import { apiClient } from "../config/clients";
-import { authConfig } from "../config/authConfig";
+import { authConfig } from "../auth/authConfig";
 
 /**
  * Login hook that stores tokens on success via the active provider.

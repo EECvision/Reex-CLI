@@ -1,0 +1,294 @@
+/* ─── Variables ─────────────────────────────────────────────── */
+.page {
+  --bg: #f5f4f0;
+  --surface: #ffffff;
+  --border: #e4e2dc;
+  --text-primary: #1a1916;
+  --text-muted: #8c8984;
+  --accent: #2a2a2a;
+  --accent-hover: #111;
+  --danger: #c0392b;
+  --danger-hover: #a93226;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --font-body: system-ui, sans-serif;
+  --font-mono: "Courier New", monospace;
+
+  min-height: 100vh;
+  background-color: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  font-family: var(--font-body);
+}
+
+/* ─── Card ───────────────────────────────────────────────────── */
+.card {
+  width: 100%;
+  max-width: 440px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    0 4px 16px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+}
+
+/* ─── Login view ─────────────────────────────────────────────── */
+.loginView {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 3rem 2rem;
+  gap: 0.6rem;
+  text-align: center;
+}
+
+.lockIcon {
+  font-size: 2rem;
+  color: var(--text-muted);
+  margin-bottom: 0.4rem;
+  letter-spacing: -0.05em;
+}
+
+.subtitle {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  margin: 0 0 1.2rem;
+}
+
+/* ─── App view ───────────────────────────────────────────────── */
+.appView {
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.4rem 1.6rem 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+/* ─── Typography ─────────────────────────────────────────────── */
+.title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+/* ─── Input row ──────────────────────────────────────────────── */
+.inputRow {
+  display: flex;
+  gap: 0.5rem;
+  padding: 1.2rem 1.6rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.input {
+  flex: 1;
+  padding: 0.6rem 0.9rem;
+  font-size: 0.9rem;
+  font-family: var(--font-body);
+  color: var(--text-primary);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  outline: none;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.input::placeholder {
+  color: var(--text-muted);
+}
+
+.input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(42, 42, 42, 0.08);
+}
+
+/* ─── Todo list ──────────────────────────────────────────────── */
+.todoList {
+  list-style: none;
+  margin: 0;
+  padding: 0.6rem 0;
+  min-height: 80px;
+}
+
+.todoItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.7rem 1.6rem;
+  gap: 1rem;
+  transition: background 0.12s ease;
+}
+
+.todoItem:hover {
+  background: var(--bg);
+}
+
+.todoText {
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  line-height: 1.5;
+  flex: 1;
+}
+
+.emptyState {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  padding: 2rem;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* ─── Buttons ────────────────────────────────────────────────── */
+.primaryButton {
+  width: 100%;
+  padding: 0.75rem 1.5rem;
+  font-size: 0.9rem;
+  font-family: var(--font-body);
+  font-weight: 600;
+  color: #fff;
+  background: var(--accent);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  transition:
+    background 0.15s ease,
+    transform 0.1s ease;
+}
+
+.primaryButton:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.primaryButton:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.primaryButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.addButton {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  font-size: 1.4rem;
+  line-height: 1;
+  color: #fff;
+  background: var(--accent);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background 0.15s ease,
+    transform 0.1s ease;
+}
+
+.addButton:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.addButton:active:not(:disabled) {
+  transform: scale(0.94);
+}
+
+.addButton:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.logoutButton {
+  font-size: 0.8rem;
+  font-family: var(--font-body);
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  padding: 0.3rem 0.9rem;
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.logoutButton:hover {
+  color: var(--text-primary);
+  border-color: var(--text-primary);
+}
+
+.deleteButton {
+  font-size: 1.1rem;
+  line-height: 1;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+  opacity: 0;
+  transition:
+    color 0.15s ease,
+    opacity 0.15s ease;
+}
+
+.todoItem:hover .deleteButton {
+  opacity: 1;
+}
+
+.deleteButton:hover {
+  color: var(--danger);
+}
+
+/* ─── Spinner ────────────────────────────────────────────────── */
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  display: inline-block;
+}
+
+.emptyState .spinner {
+  border-color: rgba(0, 0, 0, 0.1);
+  border-top-color: var(--text-muted);
+}
+
+.deleteSpinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--border);
+  border-top-color: var(--text-muted);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  display: inline-block;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
