@@ -1,5 +1,6 @@
+// @internal — No changes needed
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// @user-config — changes needed: Update access token and refresh token field names to match your API's response shape
 import { useCallback, useState, useEffect } from "react";
 import { useMutation, UseMutationOptions } from "@tanstack/react-query";
 import { apiClient } from "../config/clients";
@@ -36,7 +37,7 @@ export const useLogin = (
     onSuccess: (data: any, variables, context) => {
       const accessToken =
         data?.accessToken ?? data?.access_token ?? data?.token;
-      const refreshToken = data?.refreshToken ?? data?.refresh_token;
+      const refreshToken = data?.refreshToken ?? data?.refresh_token ?? data?.refresh;
 
       if (accessToken) {
         const provider = getActiveProvider();

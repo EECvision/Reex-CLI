@@ -3,7 +3,7 @@
 /**
  * Available auth strategies:
  *   cookieTokenProvider       → httpOnly cookie, server-managed refresh tokens
- *   nextAuthTokenProvider     → NextAuth.js session management
+ *   nextAuthTokenProvider     → NextAuth.js session management (for Next.js app)
  *   localStorageTokenProvider → client-side token storage with refresh in localStorage
  */
 
