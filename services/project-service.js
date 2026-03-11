@@ -292,7 +292,8 @@ class ProjectService {
         const config = { clients: {}, clientPrefixes: {} };
         const project = new Project({ skipAddingFilesFromTsConfig: true });
 
-        const constantsPath = path.join(configDir, "constants.ts");
+        // constants.ts was moved to user-config in a recent refactor
+        const constantsPath = path.join(configDir, "..", "user-config", "constants.ts");
 
         // 1. Get BaseURL from constants.ts (preferred) or core.ts (fallback)
         const configSourcePath = fs.existsSync(constantsPath) ? constantsPath : corePath;
