@@ -8,7 +8,7 @@ const projectService = require('../services/project-service');
 test('Project Service Tests', async (t) => {
     // Setup Temp Dir
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'api-test-'));
-    const definitionsDir = path.join(tmpDir, 'src', 'api-services', 'definitions'); // standard structure not strictly needed for service but good practice
+    const definitionsDir = path.join(tmpDir, 'api-services', 'definitions'); // standard structure not strictly needed for service but good practice
     fs.mkdirSync(definitionsDir, { recursive: true });
 
     // Cleanup Helper

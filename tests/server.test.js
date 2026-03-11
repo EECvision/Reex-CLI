@@ -8,9 +8,9 @@ const { startServer } = require('../server');
 test('Bridge Server Integration Tests', async (t) => {
     // Setup Temp Dir
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'server-test-'));
-    const definitionsDir = path.join(tmpDir, 'src', 'api-services', 'definitions');
-    const generatedDir = path.join(tmpDir, 'src', 'api-services', 'generated');
-    const configDir = path.join(tmpDir, 'src', 'api-services', 'config');
+    const definitionsDir = path.join(tmpDir, 'api-services', 'definitions');
+    const generatedDir = path.join(tmpDir, 'api-services', 'generated');
+    const configDir = path.join(tmpDir, 'api-services', 'config');
 
     fs.mkdirSync(definitionsDir, { recursive: true });
 

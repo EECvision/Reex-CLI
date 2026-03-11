@@ -3,10 +3,10 @@ const path = require("path");
 
 class HookService {
   generateHooks(targetDir, manifest) {
+    const { API_SERVICES_RELATIVE_DIR } = require('../paths');
     const generatedDir = path.join(
       targetDir,
-      "src",
-      "api-services",
+      API_SERVICES_RELATIVE_DIR,
       "generated"
     );
 

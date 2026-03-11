@@ -9,8 +9,8 @@ test('Hook Service Tests', async (t) => {
     // Setup Temp Dir
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hook-test-'));
     // Hook Service expects {targetDir}/src/api-services/definitions | generated
-    const definitionsDir = path.join(tmpDir, 'src', 'api-services', 'definitions');
-    const generatedDir = path.join(tmpDir, 'src', 'api-services', 'generated');
+    const definitionsDir = path.join(tmpDir, 'api-services', 'definitions');
+    const generatedDir = path.join(tmpDir, 'api-services', 'generated');
 
     fs.mkdirSync(definitionsDir, { recursive: true });
 

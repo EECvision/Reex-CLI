@@ -11,7 +11,8 @@ const path = require('path');
  * @param {object} manifest 
  */
 function generateTypes(targetDir, manifest) {
-  const typesDir = path.join(targetDir, 'src', 'api-services', 'types');
+  const { API_SERVICES_RELATIVE_DIR } = require('../paths');
+  const typesDir = path.join(targetDir, API_SERVICES_RELATIVE_DIR, 'types');
 
   // Ensure types root exists
   if (!fs.existsSync(typesDir)) {
