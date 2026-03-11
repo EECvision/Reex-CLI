@@ -54,7 +54,7 @@ function startServer(port) {
     app.use('/api/project', createProjectRouter(apiTargetDir));
 
     // Health Check
-    app.get('/api/health', (req, res) => res.json({ status: 'ok', cwd: process.cwd(), targetDir: apiTargetDir }));
+    app.get('/api/health', (req, res) => res.json({ status: 'ok', cwd: process.cwd(), targetDir: apiTargetDir, apiServicesDir: require('./paths').API_SERVICES_RELATIVE_DIR }));
 
     // Debug: Force Regeneration
     app.post('/api/debug/regenerate', (req, res) => {
