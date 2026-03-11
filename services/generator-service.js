@@ -3,7 +3,7 @@ const path = require('path');
 const projectService = require('./project-service');
 const typeService = require('./type-service');
 const hookService = require('./hook-service');
-const configService = require('./config-service');
+
 const sseService = require('./sse-service');
 
 class GeneratorService {
@@ -39,15 +39,15 @@ class GeneratorService {
     const definitionsDir = path.join(apiTargetDir, 'src', 'api-services', 'definitions');
     const configDir = path.join(apiTargetDir, 'src', 'api-services', 'config');
     const userConfigDir = path.join(apiTargetDir, 'src', 'api-services', 'user-config');
-    
+
     // config files
     const indexTimePath = path.join(configDir, 'index.ts');
     const clientBuilderPath = path.join(configDir, 'clientBuilder.ts');
-    
+
     // user-config files
     const constantsPath = path.join(userConfigDir, 'constants.ts');
     const authPath = path.join(userConfigDir, 'auth.ts');
-    
+
     const providersDir = path.join(apiTargetDir, 'src', 'api-services', 'providers');
 
     try {
@@ -111,10 +111,7 @@ class GeneratorService {
 
       // 4. Regenerate Barrel File (src/api-services/index.ts)
       const moduleNames = Object.keys(manifest).sort();
-      const barrelContent = `export * from "./config";
-export * from "./user-config/constants";
-export * from "./user-config/auth";
-
+      const barrelContent = `
 ${moduleNames.map((name) => `import { ${name}Api } from "./definitions/${name}";`).join('\n')}
 
 export const api = {

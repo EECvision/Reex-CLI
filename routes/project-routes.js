@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const projectService = require('../services/project-service');
 const generatorService = require('../services/generator-service');
-const configService = require('../services/config-service');
+
 const sseService = require('../services/sse-service');
 
 const createProjectRouter = (apiTargetDir) => {
@@ -76,11 +76,13 @@ const createProjectRouter = (apiTargetDir) => {
         try {
             const { baseUrl, clients, collectionName } = req.body;
             const configDir = path.join(apiTargetDir, 'src', 'api-services', 'config');
+            const userConfigDir = path.join(apiTargetDir, 'src', 'api-services', 'user-config');
 
             if (!fs.existsSync(configDir)) fs.mkdirSync(configDir, { recursive: true });
+            if (!fs.existsSync(userConfigDir)) fs.mkdirSync(userConfigDir, { recursive: true });
 
-            // 1. Update constants.ts (Base URL)
-            const constantsPath = path.join(configDir, 'constants.ts');
+            // 1. Update constants.ts (Base URL) — lives in user-config/
+            const constantsPath = path.join(userConfigDir, 'constants.ts');
             if (baseUrl) {
                 const constantsContent = `
 export const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL || "${baseUrl}";
@@ -88,10 +90,8 @@ export const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL || "${baseUrl}";
                 fs.writeFileSync(constantsPath, constantsContent);
             }
 
-            // 2. Update Clients (Upsert)
-            if (clients) {
-                configService.updateClientsFile(apiTargetDir, clients, { prune: false });
-            }
+            // 2. Clients — no longer written here.
+            // The API client is now a static config/index.ts managed by the generator.
 
             // 3. Update metadata.json (Collection Name and other metadata)
             if (collectionName) {
@@ -124,22 +124,7 @@ export const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL || "${baseUrl}";
         }
     });
 
-    // Sync Config (Prune)
-    router.post('/config/sync', (req, res) => {
-        try {
-            console.log("[SYNC] Pruning unused clients...");
-            const clientKeys = configService.updateClientsFile(apiTargetDir, {}, { prune: true });
 
-            generatorService.regenerate(apiTargetDir);
-
-            // sseService.broadcast(Date.now().toString(), 'project:updated', 'Clients synchronized');
-
-            res.json({ success: true, activeClients: clientKeys });
-        } catch (e) {
-            console.error("[SYNC] Error:", e);
-            res.status(500).json({ error: e.message });
-        }
-    });
 
     return router;
 };
