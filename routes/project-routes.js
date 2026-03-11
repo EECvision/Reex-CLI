@@ -1,6 +1,7 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
+const { API_SERVICES_RELATIVE_DIR } = require('../paths');
 const projectService = require('../services/project-service');
 const generatorService = require('../services/generator-service');
 
@@ -16,7 +17,7 @@ const createProjectRouter = (apiTargetDir) => {
 
     // Get Config
     router.get('/config', (req, res) => {
-        const configDir = path.join(apiTargetDir, 'src', 'api-services', 'config');
+        const configDir = path.join(apiTargetDir, API_SERVICES_RELATIVE_DIR, 'config');
         try {
             const config = projectService.getProjectConfig(configDir);
             res.json(config);
@@ -28,7 +29,7 @@ const createProjectRouter = (apiTargetDir) => {
 
     // Get Modules
     router.get('/modules', (req, res) => {
-        const definitionsDir = path.join(apiTargetDir, 'src', 'api-services', 'definitions');
+        const definitionsDir = path.join(apiTargetDir, API_SERVICES_RELATIVE_DIR, 'definitions');
         try {
             const modules = projectService.getModules(definitionsDir);
             res.json(modules);
@@ -40,7 +41,7 @@ const createProjectRouter = (apiTargetDir) => {
 
     // Get Definitions Content
     router.get('/definitions', (req, res) => {
-        const definitionsDir = path.join(apiTargetDir, 'src', 'api-services', 'definitions');
+        const definitionsDir = path.join(apiTargetDir, API_SERVICES_RELATIVE_DIR, 'definitions');
         try {
             if (!fs.existsSync(definitionsDir)) {
                 return res.json({});
@@ -61,7 +62,7 @@ const createProjectRouter = (apiTargetDir) => {
 
     // Get Manifest
     router.get('/manifest', (req, res) => {
-        const definitionsDir = path.join(apiTargetDir, 'src', 'api-services', 'definitions');
+        const definitionsDir = path.join(apiTargetDir, API_SERVICES_RELATIVE_DIR, 'definitions');
         try {
             const manifest = projectService.generateManifest(definitionsDir);
             res.json(manifest);
@@ -75,8 +76,8 @@ const createProjectRouter = (apiTargetDir) => {
     router.post('/config/update', (req, res) => {
         try {
             const { baseUrl, clients, collectionName } = req.body;
-            const configDir = path.join(apiTargetDir, 'src', 'api-services', 'config');
-            const userConfigDir = path.join(apiTargetDir, 'src', 'api-services', 'user-config');
+            const configDir = path.join(apiTargetDir, API_SERVICES_RELATIVE_DIR, 'config');
+            const userConfigDir = path.join(apiTargetDir, API_SERVICES_RELATIVE_DIR, 'user-config');
 
             if (!fs.existsSync(configDir)) fs.mkdirSync(configDir, { recursive: true });
             if (!fs.existsSync(userConfigDir)) fs.mkdirSync(userConfigDir, { recursive: true });
@@ -84,9 +85,19 @@ const createProjectRouter = (apiTargetDir) => {
             // 1. Update constants.ts (Base URL) — lives in user-config/
             const constantsPath = path.join(userConfigDir, 'constants.ts');
             if (baseUrl) {
-                const constantsContent = `
-export const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL || "${baseUrl}";
-`;
+                let constantsContent = "";
+                try {
+                    const framework = generatorService.detectFramework(apiTargetDir);
+                    if (framework === 'react') {
+                        constantsContent = `export const baseURL = import.meta.env.VITE_API_BASE_URL || "${baseUrl}";\n`;
+                    } else {
+                        constantsContent = `export const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL || "${baseUrl}";\n`;
+                    }
+                } catch (e) {
+                    // Fallback to Next.js sty le if detection fails
+                    constantsContent = `export const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL || "${baseUrl}";\n`;
+                }
+
                 fs.writeFileSync(constantsPath, constantsContent);
             }
 

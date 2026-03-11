@@ -1,9 +1,10 @@
+// @internal — No changes needed
+
 import { type TokenProvider } from "./types";
 import { cookieTokenProvider } from "./cookie-auth/provider";
-import { nextAuthTokenProvider } from "./next-auth/provider";
 import { localStorageTokenProvider } from "./localstorage-auth/provider";
 
-export type AuthStrategy = "cookie" | "next-auth" | "localstorage";
+export type AuthStrategy = "cookie" | "localstorage";
 
 export let activeTokenProvider: any = localStorageTokenProvider;
 
@@ -16,8 +17,6 @@ export const setActiveStrategy = (strategy: AuthStrategy) => {
     case "cookie":
       activeTokenProvider = cookieTokenProvider;
       break;
-    case "next-auth":
-      activeTokenProvider = nextAuthTokenProvider;
       break;
     case "localstorage":
       activeTokenProvider = localStorageTokenProvider;

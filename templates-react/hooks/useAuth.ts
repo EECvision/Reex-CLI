@@ -38,7 +38,8 @@ export const useLogin = (
     onSuccess: (data: any, variables, context) => {
       const accessToken =
         data?.accessToken ?? data?.access_token ?? data?.token;
-      const refreshToken = data?.refreshToken ?? data?.refresh_token ?? data?.refresh;
+      const refreshToken =
+        data?.refreshToken ?? data?.refresh_token ?? data?.refresh;
 
       if (accessToken) {
         const provider = getActiveProvider();

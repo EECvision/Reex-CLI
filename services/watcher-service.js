@@ -1,5 +1,6 @@
 const chokidar = require('chokidar');
 const path = require('path');
+const { API_SERVICES_RELATIVE_DIR } = require('../paths');
 const generatorService = require('./generator-service');
 const sseService = require('./sse-service');
 
@@ -10,8 +11,8 @@ class WatcherService {
      * @returns {Object} chokidar watcher instance
      */
     start(apiTargetDir) {
-        const definitionsDir = path.join(apiTargetDir, 'src', 'api-services', 'definitions');
-        const constantsPath = path.join(apiTargetDir, 'src', 'api-services', 'config', 'constants.ts');
+        const definitionsDir = path.join(apiTargetDir, API_SERVICES_RELATIVE_DIR, 'definitions');
+        const constantsPath = path.join(apiTargetDir, API_SERVICES_RELATIVE_DIR, 'user-config', 'constants.ts');
 
         console.log(`[WATCHER] Monitoring:\n - ${definitionsDir}\n - ${constantsPath}`);
 

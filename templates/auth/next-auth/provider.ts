@@ -1,5 +1,5 @@
 // @internal — No changes needed
-import { TokenProvider } from "../types";
+import { type TokenProvider } from "../types";
 import { getSession } from "next-auth/react";
 
 // Extend the Session type to include accessToken

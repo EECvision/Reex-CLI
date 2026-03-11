@@ -1,4 +1,5 @@
 // @internal — No changes needed
+
 import { type TokenProvider } from "../types";
 import { authConfig } from "../../user-config/auth";
 

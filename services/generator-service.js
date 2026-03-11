@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { API_SERVICES_RELATIVE_DIR } = require('../paths');
 const projectService = require('./project-service');
 const typeService = require('./type-service');
 const hookService = require('./hook-service');
@@ -24,6 +25,26 @@ class GeneratorService {
     }
   }
 
+  detectFramework(apiTargetDir) {
+    const packageJsonPath = path.join(apiTargetDir, 'package.json');
+    if (!fs.existsSync(packageJsonPath)) {
+      throw new Error("Could not find package.json in the target directory.");
+    }
+
+    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+    const dependencies = packageJson.dependencies || {};
+    const devDependencies = packageJson.devDependencies || {};
+    const allDeps = { ...dependencies, ...devDependencies };
+
+    if (allDeps['next']) {
+      return 'nextjs';
+    } else if (allDeps['react'] || allDeps['react-dom']) {
+      return 'react';
+    } else {
+      throw new Error("Unsupported project. Reex API Builder currently supports React and Next.js projects only.");
+    }
+  }
+
   /**
    * Regenerates the API project structure:
    * 1. Scaffolds config files (constants, core, utils)
@@ -36,9 +57,9 @@ class GeneratorService {
    * @param {string} apiTargetDir 
    */
   regenerate(apiTargetDir) {
-    const definitionsDir = path.join(apiTargetDir, 'src', 'api-services', 'definitions');
-    const configDir = path.join(apiTargetDir, 'src', 'api-services', 'config');
-    const userConfigDir = path.join(apiTargetDir, 'src', 'api-services', 'user-config');
+    const definitionsDir = path.join(apiTargetDir, API_SERVICES_RELATIVE_DIR, 'definitions');
+    const configDir = path.join(apiTargetDir, API_SERVICES_RELATIVE_DIR, 'config');
+    const userConfigDir = path.join(apiTargetDir, API_SERVICES_RELATIVE_DIR, 'user-config');
 
     // config files
     const indexTimePath = path.join(configDir, 'index.ts');
@@ -48,7 +69,7 @@ class GeneratorService {
     const constantsPath = path.join(userConfigDir, 'constants.ts');
     const authPath = path.join(userConfigDir, 'auth.ts');
 
-    const providersDir = path.join(apiTargetDir, 'src', 'api-services', 'providers');
+    const providersDir = path.join(apiTargetDir, API_SERVICES_RELATIVE_DIR, 'providers');
 
     try {
       console.log("[Generator] Regenerating Manifest & Hooks...");
@@ -61,9 +82,17 @@ class GeneratorService {
         fs.mkdirSync(userConfigDir, { recursive: true });
       }
 
+      // Framework Detection
+      const framework = this.detectFramework(apiTargetDir);
+      console.log(`[Generator] Detected framework: ${framework}`);
+
+      const templateBaseDir = framework === 'nextjs'
+        ? path.join(__dirname, '../templates')
+        : path.join(__dirname, '../templates-react');
+
       // 1. user-config/constants.ts - User Config (Base URL)
       if (!fs.existsSync(constantsPath)) {
-        const templateConstantsPath = path.join(__dirname, '../templates/user-config/constants.ts');
+        const templateConstantsPath = path.join(templateBaseDir, 'user-config/constants.ts');
         if (fs.existsSync(templateConstantsPath)) {
           fs.copyFileSync(templateConstantsPath, constantsPath);
           console.log("[Generator] Scaffoled user-config/constants.ts from template");
@@ -72,7 +101,7 @@ class GeneratorService {
 
       // 2. user-config/auth.ts - User Config (Auth endpoints, custom URLs)
       if (!fs.existsSync(authPath)) {
-        const templateAuthPath = path.join(__dirname, '../templates/user-config/auth.ts');
+        const templateAuthPath = path.join(templateBaseDir, 'user-config/auth.ts');
         if (fs.existsSync(templateAuthPath)) {
           fs.copyFileSync(templateAuthPath, authPath);
           console.log("[Generator] Scaffoled user-config/auth.ts from template");
@@ -80,7 +109,7 @@ class GeneratorService {
       }
 
       // 3. config/clientBuilder.ts - Managed by Bridge (Internal)
-      const templateClientBuilderPath = path.join(__dirname, '../templates/config/clientBuilder.ts');
+      const templateClientBuilderPath = path.join(templateBaseDir, 'config/clientBuilder.ts');
       if (fs.existsSync(templateClientBuilderPath)) {
         // ALWAYS updated by bridge
         fs.copyFileSync(templateClientBuilderPath, clientBuilderPath);
@@ -88,7 +117,7 @@ class GeneratorService {
       }
 
       // 4. config/index.ts - BARREL ONLY (Managed by Bridge)
-      const templateIndexPath = path.join(__dirname, '../templates/config/index.ts');
+      const templateIndexPath = path.join(templateBaseDir, 'config/index.ts');
       if (fs.existsSync(templateIndexPath)) {
         fs.copyFileSync(templateIndexPath, indexTimePath);
         console.log("[Generator] Updated config/index.ts from template");
@@ -109,7 +138,7 @@ class GeneratorService {
 
       // 3c. Sync Clients (Auto-Prune unused clients) - REMOVED (Replaced by static config/index.ts)
 
-      // 4. Regenerate Barrel File (src/api-services/index.ts)
+      // 4. Regenerate Barrel File (API_SERVICES_RELATIVE_DIR/index.ts)
       const moduleNames = Object.keys(manifest).sort();
       const barrelContent = `
 ${moduleNames.map((name) => `import { ${name}Api } from "./definitions/${name}";`).join('\n')}
@@ -118,49 +147,49 @@ export const api = {
 ${moduleNames.map((name) => `  ...${name}Api,`).join('\n')}
 };
 `;
-      const barrelPath = path.join(apiTargetDir, 'src', 'api-services', 'index.ts');
+      const barrelPath = path.join(apiTargetDir, API_SERVICES_RELATIVE_DIR, 'index.ts');
       fs.writeFileSync(barrelPath, barrelContent);
-      console.log("[Generator] Regenerated src/api-services/index.ts");
+      console.log(`[Generator] Regenerated ${API_SERVICES_RELATIVE_DIR}/index.ts`);
 
       // 7. Providers (Copy from templates)
       if (!fs.existsSync(providersDir)) {
         fs.mkdirSync(providersDir, { recursive: true });
       }
 
-      const templateProvidersDir = path.join(__dirname, '../templates/providers');
+      const templateProvidersDir = path.join(templateBaseDir, 'providers');
       if (fs.existsSync(templateProvidersDir)) {
         this.copyRecursiveSync(templateProvidersDir, providersDir);
         console.log("[Generator] Copied providers from templates");
       } else {
-        console.warn("[Generator] Warning: templates/providers directory not found");
+        console.warn(`[Generator] Warning: ${framework} templates/providers directory not found`);
       }
 
       // 7b. Hooks (Copy from templates)
-      const hooksDir = path.join(apiTargetDir, 'src', 'api-services', 'hooks');
+      const hooksDir = path.join(apiTargetDir, API_SERVICES_RELATIVE_DIR, 'hooks');
       if (!fs.existsSync(hooksDir)) {
         fs.mkdirSync(hooksDir, { recursive: true });
       }
 
-      const templateHooksDir = path.join(__dirname, '../templates/hooks');
+      const templateHooksDir = path.join(templateBaseDir, 'hooks');
       if (fs.existsSync(templateHooksDir)) {
         this.copyRecursiveSync(templateHooksDir, hooksDir);
         console.log("[Generator] Copied hooks from templates");
       } else {
-        console.warn("[Generator] Warning: templates/hooks directory not found");
+        console.warn(`[Generator] Warning: ${framework} templates/hooks directory not found`);
       }
 
       // 7c. Auth (Copy from templates)
-      const authDir = path.join(apiTargetDir, 'src', 'api-services', 'auth');
+      const authDir = path.join(apiTargetDir, API_SERVICES_RELATIVE_DIR, 'auth');
       if (!fs.existsSync(authDir)) {
         fs.mkdirSync(authDir, { recursive: true });
       }
 
-      const templateAuthDir = path.join(__dirname, '../templates/auth');
+      const templateAuthDir = path.join(templateBaseDir, 'auth');
       if (fs.existsSync(templateAuthDir)) {
         this.copyRecursiveSync(templateAuthDir, authDir);
         console.log("[Generator] Copied auth from templates");
       } else {
-        console.warn("[Generator] Warning: templates/auth directory not found");
+        console.warn(`[Generator] Warning: ${framework} templates/auth directory not found`);
       }
 
       // 8. Install Dependencies (axios, @tanstack/react-query)
@@ -174,8 +203,12 @@ ${moduleNames.map((name) => `  ...${name}Api,`).join('\n')}
         const packagesToInstall = [];
         if (!allDeps['axios']) packagesToInstall.push('axios');
         if (!allDeps['@tanstack/react-query']) packagesToInstall.push('@tanstack/react-query');
-        if (!allDeps['cookies-next']) packagesToInstall.push('cookies-next');
-        if (!allDeps['next-auth']) packagesToInstall.push('next-auth');
+
+        // Framework specific dependencies
+        if (framework === 'nextjs') {
+          if (!allDeps['cookies-next']) packagesToInstall.push('cookies-next');
+          if (!allDeps['next-auth']) packagesToInstall.push('next-auth');
+        }
 
         if (packagesToInstall.length > 0) {
           console.log(`[Generator] Missing dependencies: ${packagesToInstall.join(', ')}. Installing...`);
@@ -190,7 +223,7 @@ ${moduleNames.map((name) => `  ...${name}Api,`).join('\n')}
 
       // 9. AuthGuard Components - REMOVED
       // Cleanup legacy AuthGuard directory if it exists
-      const authGuardDir = path.join(apiTargetDir, 'src', 'api-services', 'AuthGuard');
+      const authGuardDir = path.join(apiTargetDir, API_SERVICES_RELATIVE_DIR, 'AuthGuard');
       if (fs.existsSync(authGuardDir)) {
         try {
           fs.rmSync(authGuardDir, { recursive: true, force: true });

@@ -1,10 +1,10 @@
-"use client";
+// @internal — No changes needed
 
 import React, { useState } from "react";
 import { CookieAuthGuard } from "./cookie-auth/CookieAuthGuard";
-import { NextAuthGuard } from "./next-auth/NextAuthGuard";
 import { LocalStorageAuthGuard } from "./localstorage-auth/LocalStorageAuthGuard";
-import { setActiveStrategy, type AuthStrategy } from "./manager";
+import { setActiveStrategy } from "./manager";
+import { type AuthStrategy } from "./manager";
 
 interface AuthProviderProps {
   strategy: AuthStrategy;
@@ -26,12 +26,12 @@ export const AuthProvider = ({ strategy, children }: AuthProviderProps) => {
   switch (strategy) {
     case "cookie":
       return <CookieAuthGuard>{children}</CookieAuthGuard>;
-    case "next-auth":
-      return <NextAuthGuard>{children}</NextAuthGuard>;
     case "localstorage":
       return <LocalStorageAuthGuard>{children}</LocalStorageAuthGuard>;
     default:
-      console.warn(`Unknown auth strategy: ${strategy}. Falling back to localstorage.`);
+      console.warn(
+        `Unknown auth strategy: ${strategy}. Falling back to localstorage.`,
+      );
       return <LocalStorageAuthGuard>{children}</LocalStorageAuthGuard>;
   }
 };

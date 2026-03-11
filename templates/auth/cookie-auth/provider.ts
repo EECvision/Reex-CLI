@@ -1,5 +1,5 @@
 // @internal — No changes needed
-import { TokenProvider } from "../types";
+import { type TokenProvider } from "../types";
 import { authConfig } from "../../user-config/auth";
 
 let accessToken: string | null = null;
