@@ -38,11 +38,16 @@ class GeneratorService {
   regenerate(apiTargetDir) {
     const definitionsDir = path.join(apiTargetDir, 'src', 'api-services', 'definitions');
     const configDir = path.join(apiTargetDir, 'src', 'api-services', 'config');
+    const userConfigDir = path.join(apiTargetDir, 'src', 'api-services', 'user-config');
+    
+    // config files
     const indexTimePath = path.join(configDir, 'index.ts');
-    const constantsPath = path.join(configDir, 'constants.ts');
-    const corePath = path.join(configDir, 'core.ts');
-    const clientsPath = path.join(configDir, 'clients.ts');
-    const authConfigPath = path.join(configDir, 'authConfig.ts');
+    const clientBuilderPath = path.join(configDir, 'clientBuilder.ts');
+    
+    // user-config files
+    const constantsPath = path.join(userConfigDir, 'constants.ts');
+    const authPath = path.join(userConfigDir, 'auth.ts');
+    
     const providersDir = path.join(apiTargetDir, 'src', 'api-services', 'providers');
 
     try {
@@ -52,44 +57,37 @@ class GeneratorService {
         fs.mkdirSync(configDir, { recursive: true });
       }
 
-      // 1. constants.ts - Managed by Bridge (Base URL)
+      if (!fs.existsSync(userConfigDir)) {
+        fs.mkdirSync(userConfigDir, { recursive: true });
+      }
+
+      // 1. user-config/constants.ts - User Config (Base URL)
       if (!fs.existsSync(constantsPath)) {
-        const templateConstantsPath = path.join(__dirname, '../templates/config/constants.ts');
+        const templateConstantsPath = path.join(__dirname, '../templates/user-config/constants.ts');
         if (fs.existsSync(templateConstantsPath)) {
           fs.copyFileSync(templateConstantsPath, constantsPath);
-          console.log("[Generator] Scaffoled config/constants.ts from template");
+          console.log("[Generator] Scaffoled user-config/constants.ts from template");
         }
       }
 
-      // 2. core.ts - User Managed (Interceptors), imports constants
-      if (!fs.existsSync(corePath)) {
-        const templateCorePath = path.join(__dirname, '../templates/config/core.ts');
-        if (fs.existsSync(templateCorePath)) {
-          fs.copyFileSync(templateCorePath, corePath);
-          console.log("[Generator] Scaffoled config/core.ts from template");
+      // 2. user-config/auth.ts - User Config (Auth endpoints, custom URLs)
+      if (!fs.existsSync(authPath)) {
+        const templateAuthPath = path.join(__dirname, '../templates/user-config/auth.ts');
+        if (fs.existsSync(templateAuthPath)) {
+          fs.copyFileSync(templateAuthPath, authPath);
+          console.log("[Generator] Scaffoled user-config/auth.ts from template");
         }
       }
 
-      // clients.ts - SCAFFOLD ONLY (Generator manages this)
-      if (!fs.existsSync(clientsPath)) {
-        const templateClientsPath = path.join(__dirname, '../templates/config/clients.ts');
-        if (fs.existsSync(templateClientsPath)) {
-          fs.copyFileSync(templateClientsPath, clientsPath);
-          console.log("[Generator] Scaffoled config/clients.ts from template");
-        }
+      // 3. config/clientBuilder.ts - Managed by Bridge (Internal)
+      const templateClientBuilderPath = path.join(__dirname, '../templates/config/clientBuilder.ts');
+      if (fs.existsSync(templateClientBuilderPath)) {
+        // ALWAYS updated by bridge
+        fs.copyFileSync(templateClientBuilderPath, clientBuilderPath);
+        console.log("[Generator] Updated config/clientBuilder.ts from template");
       }
 
-      // authConfig.ts - SCAFFOLD ONLY
-      if (!fs.existsSync(authConfigPath)) {
-        const templateAuthConfigPath = path.join(__dirname, '../templates/config/authConfig.ts');
-        if (fs.existsSync(templateAuthConfigPath)) {
-          fs.copyFileSync(templateAuthConfigPath, authConfigPath);
-          console.log("[Generator] Scaffoled config/authConfig.ts from template");
-        }
-      }
-
-
-      // index.ts - BARREL ONLY (Managed by Bridge)
+      // 4. config/index.ts - BARREL ONLY (Managed by Bridge)
       const templateIndexPath = path.join(__dirname, '../templates/config/index.ts');
       if (fs.existsSync(templateIndexPath)) {
         fs.copyFileSync(templateIndexPath, indexTimePath);
@@ -109,14 +107,13 @@ class GeneratorService {
       // 3b. Generate Types Folder
       typeService.generateTypes(apiTargetDir, manifest);
 
-      // 3c. Sync Clients (Auto-Prune unused clients)
-      configService.updateClientsFile(apiTargetDir, {}, { prune: true });
+      // 3c. Sync Clients (Auto-Prune unused clients) - REMOVED (Replaced by static config/index.ts)
 
       // 4. Regenerate Barrel File (src/api-services/index.ts)
       const moduleNames = Object.keys(manifest).sort();
       const barrelContent = `export * from "./config";
-export * from "./config";
-
+export * from "./user-config/constants";
+export * from "./user-config/auth";
 
 ${moduleNames.map((name) => `import { ${name}Api } from "./definitions/${name}";`).join('\n')}
 

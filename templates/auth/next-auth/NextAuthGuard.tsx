@@ -4,8 +4,8 @@
 import { useSession } from "next-auth/react";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { authConfig } from "../authConfig";
-// import { nextAuthTokenProvider } from "./NextAuthTokenProvider";
+import { authConfig } from "../../user-config/auth";
+// import { nextAuthTokenProvider } from "./provider";
 
 /**
  * Authentication guard wrapper for NextAuth.js

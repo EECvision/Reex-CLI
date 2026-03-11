@@ -3,8 +3,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useCallback, useState, useEffect } from "react";
 import { useMutation, UseMutationOptions } from "@tanstack/react-query";
-import { apiClient } from "../config/clients";
-import { authConfig } from "../auth/authConfig";
+import { activeTokenProvider } from "../auth/manager";
+import { apiClient } from "../config";
+import { authConfig } from "../user-config/auth";
 
 /**
  * Login hook that stores tokens on success via the active provider.
@@ -163,15 +164,5 @@ function getActiveProvider(): {
   clearTokens?: () => void;
   setCustomHeaders?: (headers: Record<string, string>) => void;
 } | null {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const clients = require("../config/clients");
-
-    if (clients.activeTokenProvider) {
-      return clients.activeTokenProvider;
-    }
-    return null;
-  } catch {
-    return null;
-  }
+  return activeTokenProvider ?? null;
 }

@@ -1,6 +1,6 @@
 // @user-config — changes needed: Update routes, keys, and endpoints to match your backend
 import axios from "axios";
-import { baseURL } from "../config/constants";
+import { baseURL } from "./constants";
 
 /**
  * Centralized Authentication Configuration

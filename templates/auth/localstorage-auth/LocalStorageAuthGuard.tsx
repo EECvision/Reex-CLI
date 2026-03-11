@@ -2,8 +2,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { localStorageTokenProvider } from "./LocalStorageTokenProvider";
-import { authConfig } from "@/api-services/config";
+import { localStorageTokenProvider } from "./provider";
+import { authConfig } from "../../user-config/auth";
 
 /**
  * Restores the user session on mount by exchanging the stored refresh token.

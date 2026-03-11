@@ -1,6 +1,6 @@
 // @internal — No changes needed
-import { TokenProvider } from "../../config";
-import { authConfig } from "../authConfig";
+import { TokenProvider } from "../types";
+import { authConfig } from "../../user-config/auth";
 
 let accessToken: string | null = null;
 let customHeaders: Record<string, string> | null = null;

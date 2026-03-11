@@ -1,6 +1,6 @@
 // @internal — No changes needed
-import { TokenProvider } from "../../config";
-import { authConfig } from "../authConfig";
+import { TokenProvider } from "../types";
+import { authConfig } from "../../user-config/auth";
 
 /**
  * LocalStorage Token Provider
