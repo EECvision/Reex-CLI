@@ -7,7 +7,6 @@ import { authConfig } from "../../user-config/auth";
 
 /**
  * Restores the user session on mount by exchanging the stored refresh token.
- * Wrap your root layout with `<LocalStorageAuthGuard>`. Configure in `authConfig.ts`.
  */
 
 export const LocalStorageAuthGuard = ({

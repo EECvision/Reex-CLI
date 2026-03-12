@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { cookieTokenProvider } from "./provider";
+import { apiClient } from "../../config";
 
 /**
  * Restores the user session on mount via the refresh endpoint.
- * Wrap your root layout with `<CookieAuthGuard>`. Configure in `authConfig.ts`.
  */
 
 export const CookieAuthGuard = ({
@@ -13,6 +13,12 @@ export const CookieAuthGuard = ({
 }: {
   children: React.ReactNode;
 }) => {
+  // Configure API client synchronously on mount
+  useState(() => {
+    apiClient.defaults.withCredentials = true;
+    return true;
+  });
+
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {

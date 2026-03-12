@@ -16,7 +16,6 @@ const DEFAULT_CONFIG: AxiosRequestConfig = {
   baseURL: baseURL,
   timeout: API_TIMEOUT,
   headers: { "Content-Type": "application/json" },
-  withCredentials: true,
 };
 
 /** Creates an Axios client with auto token injection and 401 refresh/retry */

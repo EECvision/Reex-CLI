@@ -29,7 +29,7 @@ export const authConfig = {
 
   /** Refresh via httpOnly cookie. Edit the method/headers to match your backend. */
   refreshWithCookie: async () => {
-    return await axios.get(authConfig.refreshEndpoint, { withCredentials: true });
+    return await axios.post(authConfig.refreshEndpoint, undefined, { withCredentials: true });
   },
 
   /** Refresh via stored token payload. Edit the property name to match your backend. */

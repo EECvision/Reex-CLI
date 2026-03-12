@@ -38,17 +38,14 @@ export const useLogin = (
     onSuccess: (data: any, variables, context) => {
       const accessToken =
         data?.accessToken ?? data?.access_token ?? data?.token;
-      const refreshToken =
-        data?.refreshToken ?? data?.refresh_token ?? data?.refresh;
+      const refreshToken = data?.refreshToken ?? data?.refresh_token ?? data?.refresh;
 
-      if (accessToken) {
-        const provider = getActiveProvider();
-        provider?.setTokens?.({ accessToken, refreshToken });
+      const provider = getActiveProvider();
+      provider?.setTokens?.({ accessToken, refreshToken });
 
-        // Notify components to update auth state without a page refresh
-        if (typeof window !== "undefined") {
-          window.dispatchEvent(new Event("auth:login"));
-        }
+      // Notify components to update auth state without a page refresh
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("auth:login"));
       }
 
       if (options?.onSuccess) {
