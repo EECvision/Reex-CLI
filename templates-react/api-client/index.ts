@@ -1,4 +1,4 @@
-import { createApiClient } from "./clientBuilder";
+import { createApiClient } from "./core";
 import { proxyTokenProvider } from "../auth/manager";
 
 /**

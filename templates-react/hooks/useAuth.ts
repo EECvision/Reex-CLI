@@ -4,7 +4,7 @@
 import { useCallback, useState, useEffect } from "react";
 import { useMutation, type UseMutationOptions } from "@tanstack/react-query";
 import { activeTokenProvider } from "../auth/manager";
-import { apiClient } from "../config";
+import { apiClient } from "../api-client";
 import { authConfig } from "../user-config/auth";
 
 /**
