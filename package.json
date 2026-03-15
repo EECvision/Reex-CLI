@@ -23,13 +23,9 @@
     ],
     "author": "Ezeka Emmanuel <ezekaemmanuel1710@gmail.com>",
     "license": "MIT",
-    "repository": {
-        "type": "git",
-        "url": "git+https://github.com/EECvision/reex-api-builder.git"
-    },
-    "homepage": "https://github.com/EECvision/reex-api-builder#readme",
+    "homepage": "https://reex-api-builder.toolshq.app",
     "bugs": {
-        "url": "https://github.com/EECvision/reex-api-builder/issues"
+        "url": "https://reex-api-builder.toolshq.app/report-issue"
     },
     "engines": {
         "node": ">=16.0.0"

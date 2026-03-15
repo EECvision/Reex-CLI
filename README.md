@@ -42,9 +42,3 @@ Once initialized, the CLI will sync your project with the Reex UI, allowing you 
 
 - 🌐 [Reex API Builder App](https://reex-api-builder.toolshq.app/)
 - 📖 [Full Documentation](https://reex-api-builder.toolshq.app/docs)
-
----
-
-## 📄 License
-
-MIT © Ezeka Emmanuel
