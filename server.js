@@ -70,7 +70,16 @@ function startServer(port) {
         console.log(`Server running at http://localhost:${port}`);
     });
 
-    return { server, watcher };
+    // Provide a graceful shutdown method for the CLI to use
+    const shutdown = () => {
+        console.log("\nClosing server and file watchers...");
+        server.close();
+        if (watcher && typeof watcher.close === 'function') {
+            watcher.close();
+        }
+    };
+
+    return { server, watcher, shutdown };
 }
 
 module.exports = { startServer };
