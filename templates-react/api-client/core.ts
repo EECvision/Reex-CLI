@@ -147,6 +147,25 @@ export const createApiClient = (
           if (typeof window !== "undefined") {
             window.dispatchEvent(new Event("auth:logout"));
           }
+
+          // Notify useNotification consumers about the auth failure
+          window.dispatchEvent(
+            new CustomEvent("api:notification", {
+              detail: {
+                id: crypto.randomUUID(),
+                type: "error",
+                message:
+                  error.response?.data &&
+                    typeof error.response.data === "object" &&
+                    "message" in error.response.data
+                    ? (error.response.data as { message: string }).message
+                    : "Authentication failed. Please log in again.",
+                statusCode: 401,
+                timestamp: new Date().toISOString(),
+              },
+            }),
+          );
+
           return Promise.reject(refreshError);
         } finally {
           isRefreshing = false;
@@ -158,6 +177,7 @@ export const createApiClient = (
       const apiError: ApiError = {
         message:
           responseData?.message ||
+          responseData?.msg ||
           error.message ||
           "An unexpected error occurred",
         code: responseData?.code,
@@ -172,6 +192,21 @@ export const createApiClient = (
           code: apiError.code,
           statusCode: apiError.statusCode,
         });
+      }
+
+      // Dispatch notification event for useNotification consumers
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("api:notification", {
+            detail: {
+              id: crypto.randomUUID(),
+              type: "error",
+              message: apiError.message,
+              statusCode: apiError.statusCode,
+              timestamp: new Date().toISOString(),
+            },
+          }),
+        );
       }
 
       throw apiError;
