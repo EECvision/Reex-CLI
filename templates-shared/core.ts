@@ -112,7 +112,8 @@ export const createApiClient = (
   // Response interceptor: unwrap data, handle 401 refresh, normalize errors
   client.interceptors.response.use(
     (response) => {
-      const res = response?.data;
+      const rawData = response?.data;
+      const res = unwrapResponseData ? (rawData?.data ?? rawData) : rawData;
 
       if (process.env.NODE_ENV === "development") {
         console.log(
