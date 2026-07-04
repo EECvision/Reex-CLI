@@ -76,23 +76,15 @@ const createProjectRouter = (apiTargetDir) => {
     router.post('/config/update', (req, res) => {
         try {
             const { baseUrl, clients, collectionName } = req.body;
-            const configDir = path.join(apiTargetDir, API_SERVICES_RELATIVE_DIR, 'config');
-            const userConfigDir = path.join(apiTargetDir, API_SERVICES_RELATIVE_DIR, 'user-config');
+            const reexDir = path.join(apiTargetDir, API_SERVICES_RELATIVE_DIR, '.reex');
+            if (!fs.existsSync(reexDir)) fs.mkdirSync(reexDir, { recursive: true });
 
-            if (!fs.existsSync(configDir)) fs.mkdirSync(configDir, { recursive: true });
-            if (!fs.existsSync(userConfigDir)) fs.mkdirSync(userConfigDir, { recursive: true });
-
-            // 1. Update constants.ts (Base URL) — lives in user-config/
-            const constantsPath = path.join(userConfigDir, 'constants.ts');
-            if (baseUrl) {
-                const constantsContent = `// Edit this file to configure your API Base URL
-// For React/Vite projects, uncomment the next line and comment the process.env line
-// export const baseURL = import.meta.env.VITE_API_BASE_URL || "${baseUrl}";
-export const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL || "${baseUrl}";
-
-export const unwrapResponseData = true; // Set to false if your API does not wrap responses in a 'data' object
-`;
-                fs.writeFileSync(constantsPath, constantsContent);
+            // 1. Update api.config.ts (Base URL)
+            const apiConfigPath = path.join(apiTargetDir, API_SERVICES_RELATIVE_DIR, 'api.config.ts');
+            if (baseUrl && fs.existsSync(apiConfigPath)) {
+                let apiConfigContent = fs.readFileSync(apiConfigPath, 'utf8');
+                apiConfigContent = apiConfigContent.replace(/baseURL:\s*".*"/, `baseURL: "${baseUrl}"`);
+                fs.writeFileSync(apiConfigPath, apiConfigContent);
             }
 
             // 2. Clients — no longer written here.
@@ -100,7 +92,7 @@ export const unwrapResponseData = true; // Set to false if your API does not wra
 
             // 3. Update metadata.json (Collection Name and other metadata)
             if (collectionName) {
-                const metadataPath = path.join(configDir, 'metadata.json');
+                const metadataPath = path.join(reexDir, 'metadata.json');
                 let metadata = {};
                 if (fs.existsSync(metadataPath)) {
                     try {

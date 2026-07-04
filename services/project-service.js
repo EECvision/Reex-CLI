@@ -292,11 +292,11 @@ class ProjectService {
         const config = { clients: {}, clientPrefixes: {} };
         const project = new Project({ skipAddingFilesFromTsConfig: true });
 
-        // constants.ts was moved to user-config in a recent refactor
-        const constantsPath = path.join(configDir, "..", "user-config", "constants.ts");
+        // constants.ts and auth.ts were merged into api.config.ts
+        const apiConfigPath = path.join(configDir, "..", "api.config.ts");
 
-        // 1. Get BaseURL from constants.ts (preferred) or core.ts (fallback)
-        const configSourcePath = fs.existsSync(constantsPath) ? constantsPath : corePath;
+        // 1. Get BaseURL from api.config.ts (preferred) or core.ts (fallback)
+        const configSourcePath = fs.existsSync(apiConfigPath) ? apiConfigPath : corePath;
 
         if (fs.existsSync(configSourcePath)) {
             const sourceFile = project.addSourceFileAtPath(configSourcePath);
@@ -385,7 +385,7 @@ class ProjectService {
         }
 
         // 3. Get metadata from metadata.json
-        const metadataPath = path.join(configDir, 'metadata.json');
+        const metadataPath = path.join(configDir, "..", ".reex", 'metadata.json');
         if (fs.existsSync(metadataPath)) {
             try {
                 const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));

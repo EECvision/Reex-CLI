@@ -1,8 +1,7 @@
 // @internal — No changes needed
 
 import { type TokenProvider } from "../types";
-import { authConfig } from "../../user-config/auth";
-import { unwrapResponseData } from "../../user-config/constants";
+import { apiConfig } from "../../api.config";
 
 let accessToken: string | null = null;
 let customHeaders: Record<string, string> | null = null;
@@ -19,14 +18,14 @@ interface CookieTokenProvider extends TokenProvider {
  * - Access Token: Managed in memory (primary) & localStorage (fallback)
  * - Refresh Mechanism: Automatic via httpOnly cookies
  *
- * Edit `authConfig.ts` to customize routes and storage keys.
+ * Edit `api.config.ts` to customize routes and storage keys.
  */
 
 export const cookieTokenProvider: CookieTokenProvider = {
   getToken: () => {
     if (accessToken) return accessToken;
     if (typeof window !== "undefined") {
-      return localStorage.getItem(authConfig.accessTokenKey);
+      return localStorage.getItem(apiConfig.auth.accessTokenKey);
     }
     return null;
   },
@@ -56,7 +55,7 @@ export const cookieTokenProvider: CookieTokenProvider = {
   setTokens: ({ accessToken: newAccessToken }) => {
     accessToken = newAccessToken;
     if (typeof window !== "undefined") {
-      localStorage.setItem(authConfig.accessTokenKey, newAccessToken);
+      localStorage.setItem(apiConfig.auth.accessTokenKey, newAccessToken);
     }
   },
 
@@ -64,26 +63,26 @@ export const cookieTokenProvider: CookieTokenProvider = {
     accessToken = null;
     customHeaders = null;
     if (typeof window !== "undefined") {
-      localStorage.removeItem(authConfig.accessTokenKey);
+      localStorage.removeItem(apiConfig.auth.accessTokenKey);
       localStorage.removeItem("custom_headers");
     }
   },
 
   refreshToken: async () => {
     try {
-      const response = await authConfig.refreshWithCookie();
+      const response = await apiConfig.auth.refreshWithCookie();
 
       // Safely check if this is a raw Axios response wrapper
       const isRawAxiosResponse =
         response?.config && response?.headers && response?.status;
 
       const unwrappedData = isRawAxiosResponse ? response.data : response;
-      const responseData = unwrapResponseData ? (unwrappedData?.data ?? unwrappedData) : unwrappedData;
+      const responseData = apiConfig.unwrapResponseData ? (unwrappedData?.data ?? unwrappedData) : unwrappedData;
 
       accessToken = responseData.accessToken;
 
       if (typeof window !== "undefined" && accessToken) {
-        localStorage.setItem(authConfig.accessTokenKey, accessToken);
+        localStorage.setItem(apiConfig.auth.accessTokenKey, accessToken);
       }
 
       return accessToken;
@@ -91,13 +90,13 @@ export const cookieTokenProvider: CookieTokenProvider = {
       // Fallback: use stored access token if cookie refresh failed
       if (typeof window !== "undefined") {
         const storedAccessToken = localStorage.getItem(
-          authConfig.accessTokenKey,
+          apiConfig.auth.accessTokenKey,
         );
         if (storedAccessToken) {
           accessToken = storedAccessToken;
           return accessToken;
         }
-        localStorage.removeItem(authConfig.accessTokenKey);
+        localStorage.removeItem(apiConfig.auth.accessTokenKey);
       }
 
       accessToken = null;

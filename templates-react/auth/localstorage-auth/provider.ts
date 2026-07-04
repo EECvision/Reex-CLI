@@ -1,14 +1,13 @@
 // @internal — No changes needed
 
 import { type TokenProvider } from "../types";
-import { authConfig } from "../../user-config/auth";
-import { unwrapResponseData } from "../../user-config/constants";
+import { apiConfig } from "../../api.config";
 
 /**
  * LocalStorage Token Provider
  * - Access Token & Refresh Token: Persisted in localStorage
  *
- * Edit `authConfig.ts` to customize routes, storage keys, and refresh payload.
+ * Edit `api.config.ts` to customize routes and storage keys., and refresh payload.
  */
 
 let accessToken: string | null = null;
@@ -26,7 +25,7 @@ export const localStorageTokenProvider: LocalStorageTokenProvider = {
   getToken: () => {
     if (accessToken) return accessToken;
     if (typeof window !== "undefined") {
-      return localStorage.getItem(authConfig.accessTokenKey);
+      return localStorage.getItem(apiConfig.auth.accessTokenKey);
     }
     return null;
   },
@@ -58,11 +57,11 @@ export const localStorageTokenProvider: LocalStorageTokenProvider = {
     accessToken = newAccessToken;
     if (typeof window !== "undefined") {
       if (refreshToken) {
-        localStorage.setItem(authConfig.refreshTokenKey, refreshToken);
-        localStorage.removeItem(authConfig.accessTokenKey);
+        localStorage.setItem(apiConfig.auth.refreshTokenKey, refreshToken);
+        localStorage.removeItem(apiConfig.auth.accessTokenKey);
       } else {
-        localStorage.setItem(authConfig.accessTokenKey, newAccessToken);
-        localStorage.removeItem(authConfig.refreshTokenKey);
+        localStorage.setItem(apiConfig.auth.accessTokenKey, newAccessToken);
+        localStorage.removeItem(apiConfig.auth.refreshTokenKey);
       }
     }
   },
@@ -73,8 +72,8 @@ export const localStorageTokenProvider: LocalStorageTokenProvider = {
     customHeaders = null;
     refreshPromise = null;
     if (typeof window !== "undefined") {
-      localStorage.removeItem(authConfig.refreshTokenKey);
-      localStorage.removeItem(authConfig.accessTokenKey);
+      localStorage.removeItem(apiConfig.auth.accessTokenKey);
+      localStorage.removeItem(apiConfig.auth.refreshTokenKey);
       localStorage.removeItem("custom_headers");
     }
   },
@@ -91,13 +90,13 @@ export const localStorageTokenProvider: LocalStorageTokenProvider = {
         if (typeof window === "undefined") return null;
 
         const storedRefreshToken = localStorage.getItem(
-          authConfig.refreshTokenKey,
+          apiConfig.auth.refreshTokenKey,
         );
 
         // Fallback: use stored access token if no refresh token
         if (!storedRefreshToken) {
           const storedAccessToken = localStorage.getItem(
-            authConfig.accessTokenKey,
+            apiConfig.auth.accessTokenKey,
           );
           if (storedAccessToken) {
             accessToken = storedAccessToken;
@@ -106,7 +105,7 @@ export const localStorageTokenProvider: LocalStorageTokenProvider = {
           throw new Error("No refresh token found");
         }
 
-        const response = await authConfig.refreshWithToken(storedRefreshToken);
+        const response = await apiConfig.auth.refreshWithToken(storedRefreshToken);
 
         // Safely check if this is a raw Axios response wrapper
         const isRawAxiosResponse =

@@ -8,7 +8,7 @@ import axios, {
 } from "axios";
 
 import type { ApiError, TokenProvider } from "./auth/types";
-import { baseURL, unwrapResponseData } from "./user-config/constants";
+import { apiConfig } from "./api.config";
 import { proxyTokenProvider } from "./auth/manager";
 
 const API_TIMEOUT = 1080000;
@@ -48,7 +48,7 @@ const formatErrorMessage = (data: any): string | undefined => {
 };
 
 const DEFAULT_CONFIG: AxiosRequestConfig = {
-  baseURL: baseURL,
+  baseURL: apiConfig.baseURL,
   timeout: API_TIMEOUT,
   headers: { "Content-Type": "application/json" },
 };
@@ -113,7 +113,7 @@ export const createApiClient = (
   client.interceptors.response.use(
     (response) => {
       const rawData = response?.data;
-      const res = unwrapResponseData ? (rawData?.data ?? rawData) : rawData;
+      const res = apiConfig.unwrapResponseData ? (rawData?.data ?? rawData) : rawData;
 
       if (process.env.NODE_ENV === "development") {
         console.log(

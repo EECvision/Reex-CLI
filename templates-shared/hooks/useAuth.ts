@@ -10,8 +10,7 @@ import {
 
 import { apiClient } from "../core";
 import { getActiveProvider } from "../auth/manager";
-import { authConfig } from "../user-config/auth";
-import { unwrapResponseData } from "../user-config/constants";
+import { apiConfig } from "../api.config";
 
 /**
  * Login hook that stores tokens on success via the active provider.
@@ -31,14 +30,14 @@ export const useLogin = (
 
   const mutation = useMutation({
     mutationFn: async (credentials: any) => {
-      const response = await apiClient.post(authConfig.loginUrl, credentials);
+      const response = await apiClient.post(apiConfig.auth.loginUrl, credentials);
 
       // Safely check if this is a raw Axios response wrapper
       const isRawAxiosResponse =
         response?.config && response?.headers && response?.status;
 
       const unwrappedData = isRawAxiosResponse ? response.data : response;
-      return unwrapResponseData
+      return apiConfig.unwrapResponseData
         ? (unwrappedData?.data ?? unwrappedData)
         : unwrappedData;
     },
@@ -87,10 +86,10 @@ export const useLogout = (options?: { callServer?: boolean }) => {
     try {
       if (callServer) {
         try {
-          if (authConfig.logoutMethod === "POST") {
-            await apiClient.post(authConfig.logoutUrl);
+          if (apiConfig.auth.logoutMethod === "POST") {
+            await apiClient.post(apiConfig.auth.logoutUrl);
           } else {
-            await apiClient.get(authConfig.logoutUrl);
+            await apiClient.get(apiConfig.auth.logoutUrl);
           }
         } catch {
           console.warn(

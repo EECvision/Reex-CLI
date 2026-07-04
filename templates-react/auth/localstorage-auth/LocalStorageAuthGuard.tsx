@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { localStorageTokenProvider } from "./provider";
-import { authConfig } from "../../user-config/auth";
+import { apiConfig } from "../../api.config";
 
 /**
  * Restores the user session on mount by exchanging the stored refresh token.
@@ -20,9 +20,9 @@ export const LocalStorageAuthGuard = ({
     // Attempt to restore session from stored tokens
     const initAuth = async () => {
       const hasRefreshToken = !!localStorage.getItem(
-        authConfig.refreshTokenKey,
+        apiConfig.auth.refreshTokenKey,
       );
-      const hasAccessToken = !!localStorage.getItem(authConfig.accessTokenKey);
+      const hasAccessToken = !!localStorage.getItem(apiConfig.auth.accessTokenKey);
 
       if (hasRefreshToken && localStorageTokenProvider?.refreshToken) {
         try {

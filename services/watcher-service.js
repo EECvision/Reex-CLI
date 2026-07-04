@@ -12,7 +12,7 @@ class WatcherService {
      */
     start(apiTargetDir) {
         const definitionsDir = path.join(apiTargetDir, API_SERVICES_RELATIVE_DIR, 'definitions');
-        const constantsPath = path.join(apiTargetDir, API_SERVICES_RELATIVE_DIR, 'user-config', 'constants.ts');
+        const constantsPath = path.join(apiTargetDir, API_SERVICES_RELATIVE_DIR, 'api.config.ts');
 
         console.log(`[WATCHER] Monitoring:\n - ${definitionsDir}\n - ${constantsPath}`);
 

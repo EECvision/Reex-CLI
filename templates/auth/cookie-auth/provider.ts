@@ -1,6 +1,6 @@
 // @internal — No changes needed
 import { type TokenProvider } from "../types";
-import { authConfig } from "../../user-config/auth";
+import { apiConfig } from "../../api.config";
 
 let isCookieAuthActive: boolean = false;
 let customHeaders: Record<string, string> | null = null;
@@ -74,7 +74,7 @@ export const cookieTokenProvider: CookieTokenProvider = {
 
   refreshToken: async () => {
     try {
-      await authConfig.refreshWithCookie();
+      await apiConfig.auth.refreshWithCookie();
 
       // If the refresh succeeds, the browser now has the updated cookie.
       isCookieAuthActive = true;

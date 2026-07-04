@@ -58,22 +58,20 @@ class GeneratorService {
    */
   regenerate(apiTargetDir) {
     const definitionsDir = path.join(apiTargetDir, API_SERVICES_RELATIVE_DIR, 'definitions');
-    const userConfigDir = path.join(apiTargetDir, API_SERVICES_RELATIVE_DIR, 'user-config');
 
     // api-client files
     const clientBuilderPath = path.join(apiTargetDir, API_SERVICES_RELATIVE_DIR, 'core.ts');
 
-    // user-config files
-    const constantsPath = path.join(userConfigDir, 'constants.ts');
-    const authPath = path.join(userConfigDir, 'auth.ts');
+    // config files
+    const apiConfigPath = path.join(apiTargetDir, API_SERVICES_RELATIVE_DIR, 'api.config.ts');
 
     const providersDir = path.join(apiTargetDir, API_SERVICES_RELATIVE_DIR, 'providers');
 
     try {
       console.log("[Generator] Regenerating Manifest & Hooks...");
 
-      if (!fs.existsSync(userConfigDir)) {
-        fs.mkdirSync(userConfigDir, { recursive: true });
+      if (!fs.existsSync(path.dirname(apiConfigPath))) {
+        fs.mkdirSync(path.dirname(apiConfigPath), { recursive: true });
       }
 
       // Framework Detection
@@ -94,23 +92,16 @@ class GeneratorService {
         return null;
       };
 
-      // 1. user-config/constants.ts - User Config (Base URL)
-      if (!fs.existsSync(constantsPath)) {
-        const templateConstantsPath = resolveTemplateFile('user-config/constants.ts');
-        if (templateConstantsPath) {
-          fs.copyFileSync(templateConstantsPath, constantsPath);
-          console.log("[Generator] Scaffoled user-config/constants.ts from template");
+      // 1. api.config.ts - User Config
+      if (!fs.existsSync(apiConfigPath)) {
+        const templateApiConfigPath = resolveTemplateFile('api.config.ts');
+        if (templateApiConfigPath) {
+          fs.copyFileSync(templateApiConfigPath, apiConfigPath);
+          console.log("[Generator] Scaffolded api.config.ts from template");
         }
       }
 
-      // 2. user-config/auth.ts - User Config (Auth endpoints, custom URLs)
-      if (!fs.existsSync(authPath)) {
-        const templateAuthPath = resolveTemplateFile('user-config/auth.ts');
-        if (templateAuthPath) {
-          fs.copyFileSync(templateAuthPath, authPath);
-          console.log("[Generator] Scaffoled user-config/auth.ts from template");
-        }
-      }
+
 
       // 3. core.ts - Managed by Bridge (Internal)
       const templateClientBuilderPath = resolveTemplateFile('core.ts');
@@ -236,17 +227,7 @@ ${moduleNames.map((name) => `  ...${name}Api,`).join('\n')}
         }
       }
 
-      // 9. AuthGuard Components - REMOVED
-      // Cleanup legacy AuthGuard directory if it exists
-      const authGuardDir = path.join(apiTargetDir, API_SERVICES_RELATIVE_DIR, 'AuthGuard');
-      if (fs.existsSync(authGuardDir)) {
-        try {
-          fs.rmSync(authGuardDir, { recursive: true, force: true });
-          console.log("[Generator] Removed legacy AuthGuard directory");
-        } catch (e) {
-          console.warn("[Generator] Failed to remove legacy AuthGuard directory", e);
-        }
-      }
+
 
       sseService.broadcast(Date.now().toString(), 'project:updated', 'Project generated');
       console.log("[Generator] Regeneration Complete");

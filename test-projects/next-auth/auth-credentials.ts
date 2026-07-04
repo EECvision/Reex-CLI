@@ -1,7 +1,7 @@
 import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import { authConfig } from './auth.config';
-import { baseURL, unwrapResponseData } from './api-services/user-config/constants';
+import { apiConfig } from './api-services/api.config';
 
 // Extend NextAuth types to include accessToken
 declare module "next-auth" {
