@@ -8,8 +8,8 @@ export const apiConfig = {
    */
   baseURL: "https://example.com/api/v1",
 
-  /** Set to false if your API does not wrap responses in a 'data' object */
-  unwrapResponseData: true,
+  /** Set to true if your API wraps responses in a 'data' object */
+  unwrapResponseData: false,
 
   /**
    * 2. AUTHENTICATION SETTINGS

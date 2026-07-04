@@ -1,7 +1,7 @@
 // @internal — No changes needed
 import { apiConfig } from "../../api.config";
 import { type TokenProvider } from "../types";
-import { setCookie, getCookie, deleteCookie } from "../utils/cookies";
+
 
 /**
  * LocalStorage Token Provider
@@ -25,7 +25,7 @@ export const localStorageTokenProvider: LocalStorageTokenProvider = {
   getToken: () => {
     if (accessToken) return accessToken;
     if (typeof window !== "undefined") {
-      return getCookie(apiConfig.auth.accessTokenKey) as string;
+      return localStorage.getItem(apiConfig.auth.accessTokenKey);
     }
     return null;
   },
@@ -57,11 +57,11 @@ export const localStorageTokenProvider: LocalStorageTokenProvider = {
     accessToken = newAccessToken;
     if (typeof window !== "undefined") {
       if (refreshToken) {
-        setCookie(apiConfig.auth.refreshTokenKey, refreshToken);
-        deleteCookie(apiConfig.auth.accessTokenKey);
+        localStorage.setItem(apiConfig.auth.refreshTokenKey, refreshToken);
+        localStorage.removeItem(apiConfig.auth.accessTokenKey);
       } else {
-        setCookie(apiConfig.auth.accessTokenKey, newAccessToken);
-        deleteCookie(apiConfig.auth.refreshTokenKey);
+        localStorage.setItem(apiConfig.auth.accessTokenKey, newAccessToken);
+        localStorage.removeItem(apiConfig.auth.refreshTokenKey);
       }
     }
   },
@@ -72,8 +72,8 @@ export const localStorageTokenProvider: LocalStorageTokenProvider = {
     customHeaders = null;
     refreshPromise = null;
     if (typeof window !== "undefined") {
-      deleteCookie(apiConfig.auth.refreshTokenKey);
-      deleteCookie(apiConfig.auth.accessTokenKey);
+      localStorage.removeItem(apiConfig.auth.refreshTokenKey);
+      localStorage.removeItem(apiConfig.auth.accessTokenKey);
       localStorage.removeItem("custom_headers");
     }
   },
@@ -90,13 +90,13 @@ export const localStorageTokenProvider: LocalStorageTokenProvider = {
         if (typeof window === "undefined") return null;
 
         const storedRefreshToken = localStorage.getItem(
-          authConfig.refreshTokenKey,
+          apiConfig.auth.refreshTokenKey,
         );
 
         // Fallback: use stored access token if no refresh token
         if (!storedRefreshToken) {
           const storedAccessToken = localStorage.getItem(
-            authConfig.accessTokenKey,
+            apiConfig.auth.accessTokenKey,
           );
           if (storedAccessToken) {
             accessToken = storedAccessToken;
@@ -112,22 +112,22 @@ export const localStorageTokenProvider: LocalStorageTokenProvider = {
           response?.config && response?.headers && response?.status;
 
         const unwrappedData = isRawAxiosResponse ? response.data : response;
-        const responseData = unwrapResponseData ? (unwrappedData?.data ?? unwrappedData) : unwrappedData;
+        const responseData = apiConfig.unwrapResponseData ? (unwrappedData?.data ?? unwrappedData) : unwrappedData;
 
         const { accessToken: newAccess, refreshToken: newRefresh } =
           responseData;
         accessToken = newAccess;
 
         if (newRefresh) {
-          localStorage.setItem(authConfig.refreshTokenKey, newRefresh);
+          localStorage.setItem(apiConfig.auth.refreshTokenKey, newRefresh);
         }
 
         return accessToken;
       } catch {
         console.warn("Refresh failed, logging out...");
         accessToken = null;
-        localStorage.removeItem(authConfig.refreshTokenKey);
-        localStorage.removeItem(authConfig.accessTokenKey);
+        localStorage.removeItem(apiConfig.auth.refreshTokenKey);
+        localStorage.removeItem(apiConfig.auth.accessTokenKey);
         return null;
       } finally {
         refreshPromise = null;

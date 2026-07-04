@@ -6,7 +6,7 @@ import { apiConfig } from "../../api.config";
 
 /**
  * Restores the user session on mount by exchanging the stored refresh token.
- * Wrap your root layout with `<LocalStorageAuthGuard>`. Configure in `authConfig.ts`.
+ * Wrap your root layout with `<LocalStorageAuthGuard>`. Configure in `api.config.ts`.
  */
 
 export const LocalStorageAuthGuard = ({

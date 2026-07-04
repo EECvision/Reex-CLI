@@ -112,21 +112,21 @@ export const localStorageTokenProvider: LocalStorageTokenProvider = {
           response?.config && response?.headers && response?.status;
 
         const unwrappedData = isRawAxiosResponse ? response.data : response;
-        const responseData = unwrapResponseData ? (unwrappedData?.data ?? unwrappedData) : unwrappedData;
+        const responseData = apiConfig.unwrapResponseData ? (unwrappedData?.data ?? unwrappedData) : unwrappedData;
 
         const { accessToken: newAccess, refreshToken: newRefresh } = responseData;
         accessToken = newAccess;
 
         if (newRefresh) {
-          localStorage.setItem(authConfig.refreshTokenKey, newRefresh);
+          localStorage.setItem(apiConfig.auth.refreshTokenKey, newRefresh);
         }
 
         return accessToken;
       } catch {
         console.warn("Refresh failed, logging out...");
         accessToken = null;
-        localStorage.removeItem(authConfig.refreshTokenKey);
-        localStorage.removeItem(authConfig.accessTokenKey);
+        localStorage.removeItem(apiConfig.auth.refreshTokenKey);
+        localStorage.removeItem(apiConfig.auth.accessTokenKey);
         return null;
       } finally {
         refreshPromise = null;

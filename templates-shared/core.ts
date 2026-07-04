@@ -7,9 +7,9 @@ import axios, {
   type InternalAxiosRequestConfig,
 } from "axios";
 
-import type { ApiError, TokenProvider } from "./auth/types";
+import type { ApiError, TokenProvider } from "./auth-methods/types";
 import { apiConfig } from "./api.config";
-import { proxyTokenProvider } from "./auth/manager";
+import { proxyTokenProvider } from "./auth-methods/manager";
 
 const API_TIMEOUT = 1080000;
 const REFRESH_TIMEOUT = 10000;

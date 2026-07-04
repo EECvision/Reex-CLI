@@ -180,22 +180,22 @@ ${moduleNames.map((name) => `  ...${name}Api,`).join('\n')}
       }
 
       // 7c. Auth (Copy from templates)
-      const authDir = path.join(apiTargetDir, API_SERVICES_RELATIVE_DIR, 'auth');
+      const authDir = path.join(apiTargetDir, API_SERVICES_RELATIVE_DIR, 'auth-methods');
       if (!fs.existsSync(authDir)) {
         fs.mkdirSync(authDir, { recursive: true });
       }
 
-      const sharedAuthDir = path.join(sharedTemplateDir, 'auth');
+      const sharedAuthDir = path.join(sharedTemplateDir, 'auth-methods');
       if (fs.existsSync(sharedAuthDir)) {
         this.copyRecursiveSync(sharedAuthDir, authDir);
       }
 
-      const templateAuthDir = path.join(templateBaseDir, 'auth');
+      const templateAuthDir = path.join(templateBaseDir, 'auth-methods');
       if (fs.existsSync(templateAuthDir)) {
         this.copyRecursiveSync(templateAuthDir, authDir);
-        console.log("[Generator] Copied auth from templates");
+        console.log("[Generator] Copied auth-methods from templates");
       } else {
-        console.warn(`[Generator] Warning: ${framework} templates/auth directory not found`);
+        console.warn(`[Generator] Warning: ${framework} templates/auth-methods directory not found`);
       }
 
       // 8. Install Dependencies (axios, @tanstack/react-query)

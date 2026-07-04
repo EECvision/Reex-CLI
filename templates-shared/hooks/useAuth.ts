@@ -9,7 +9,7 @@ import {
 } from "@tanstack/react-query";
 
 import { apiClient } from "../core";
-import { getActiveProvider } from "../auth/manager";
+import { getActiveProvider } from "../auth-methods/manager";
 import { apiConfig } from "../api.config";
 
 /**
