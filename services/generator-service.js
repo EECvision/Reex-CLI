@@ -9,7 +9,7 @@ const sseService = require('./sse-service');
 
 class GeneratorService {
 
-  copyRecursiveSync(src, dest) {
+  copyRecursiveSync(src, dest, overwrite = false) {
     if (fs.existsSync(src)) {
       if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
       fs.readdirSync(src).forEach((childItemName) => {
@@ -17,9 +17,11 @@ class GeneratorService {
         const destPath = path.join(dest, childItemName);
         const stats = fs.statSync(srcPath);
         if (stats.isDirectory()) {
-          this.copyRecursiveSync(srcPath, destPath);
+          this.copyRecursiveSync(srcPath, destPath, overwrite);
         } else {
-          fs.copyFileSync(srcPath, destPath);
+          if (overwrite || !fs.existsSync(destPath)) {
+            fs.copyFileSync(srcPath, destPath);
+          }
         }
       });
     }
@@ -103,12 +105,11 @@ class GeneratorService {
 
 
 
-      // 3. core.ts - Managed by Bridge (Internal)
+      // 3. core.ts - Scaffold Once
       const templateClientBuilderPath = resolveTemplateFile('core.ts');
-      if (templateClientBuilderPath) {
-        // ALWAYS updated by bridge
+      if (templateClientBuilderPath && !fs.existsSync(clientBuilderPath)) {
         fs.copyFileSync(templateClientBuilderPath, clientBuilderPath);
-        console.log("[Generator] Updated core.ts from template");
+        console.log("[Generator] Scaffolded core.ts from template");
       }
 
 
@@ -149,13 +150,13 @@ ${moduleNames.map((name) => `  ...${name}Api,`).join('\n')}
 
       const sharedProvidersDir = path.join(sharedTemplateDir, 'providers');
       if (fs.existsSync(sharedProvidersDir)) {
-        this.copyRecursiveSync(sharedProvidersDir, providersDir);
+        this.copyRecursiveSync(sharedProvidersDir, providersDir, false);
       }
 
       const templateProvidersDir = path.join(templateBaseDir, 'providers');
       if (fs.existsSync(templateProvidersDir)) {
-        this.copyRecursiveSync(templateProvidersDir, providersDir);
-        console.log("[Generator] Copied providers from templates");
+        this.copyRecursiveSync(templateProvidersDir, providersDir, false);
+        console.log("[Generator] Scaffolded providers from templates (if missing)");
       } else {
         console.warn(`[Generator] Warning: ${framework} templates/providers directory not found`);
       }
@@ -168,13 +169,13 @@ ${moduleNames.map((name) => `  ...${name}Api,`).join('\n')}
 
       const sharedHooksDir = path.join(sharedTemplateDir, 'hooks');
       if (fs.existsSync(sharedHooksDir)) {
-        this.copyRecursiveSync(sharedHooksDir, hooksDir);
+        this.copyRecursiveSync(sharedHooksDir, hooksDir, false);
       }
 
       const templateHooksDir = path.join(templateBaseDir, 'hooks');
       if (fs.existsSync(templateHooksDir)) {
-        this.copyRecursiveSync(templateHooksDir, hooksDir);
-        console.log("[Generator] Copied hooks from templates");
+        this.copyRecursiveSync(templateHooksDir, hooksDir, false);
+        console.log("[Generator] Scaffolded hooks from templates (if missing)");
       } else {
         console.warn(`[Generator] Warning: ${framework} templates/hooks directory not found`);
       }
@@ -187,13 +188,13 @@ ${moduleNames.map((name) => `  ...${name}Api,`).join('\n')}
 
       const sharedAuthDir = path.join(sharedTemplateDir, 'auth-methods');
       if (fs.existsSync(sharedAuthDir)) {
-        this.copyRecursiveSync(sharedAuthDir, authDir);
+        this.copyRecursiveSync(sharedAuthDir, authDir, false);
       }
 
       const templateAuthDir = path.join(templateBaseDir, 'auth-methods');
       if (fs.existsSync(templateAuthDir)) {
-        this.copyRecursiveSync(templateAuthDir, authDir);
-        console.log("[Generator] Copied auth-methods from templates");
+        this.copyRecursiveSync(templateAuthDir, authDir, false);
+        console.log("[Generator] Scaffolded auth-methods from templates (if missing)");
       } else {
         console.warn(`[Generator] Warning: ${framework} templates/auth-methods directory not found`);
       }
@@ -235,6 +236,117 @@ ${moduleNames.map((name) => `  ...${name}Api,`).join('\n')}
     } catch (e) {
       console.error("[Generator] Regeneration Failed:", e);
       throw e;
+    }
+  }
+  resetScaffold(apiTargetDir, target) {
+    const framework = this.detectFramework(apiTargetDir);
+    const sharedTemplateDir = path.join(__dirname, '../templates-shared');
+    const templateBaseDir = framework === 'nextjs'
+      ? path.join(__dirname, '../templates')
+      : path.join(__dirname, '../templates-react');
+
+    const apiServicesDir = path.join(apiTargetDir, API_SERVICES_RELATIVE_DIR);
+    if (!fs.existsSync(apiServicesDir)) {
+      fs.mkdirSync(apiServicesDir, { recursive: true });
+    }
+
+    if (!target) {
+      const resolveTemplateFile = (relativePath) => {
+        const fwPath = path.join(templateBaseDir, relativePath);
+        if (fs.existsSync(fwPath)) return fwPath;
+        const sharedPath = path.join(sharedTemplateDir, relativePath);
+        if (fs.existsSync(sharedPath)) return sharedPath;
+        return null;
+      };
+
+      const resetFile = (filename) => {
+        const tpl = resolveTemplateFile(filename);
+        if (tpl) {
+          fs.copyFileSync(tpl, path.join(apiServicesDir, filename));
+          console.log(`[Reset] Reset ${filename}`);
+        }
+      }
+
+      resetFile('api.config.ts');
+      resetFile('core.ts');
+
+      const copyFolder = (folderName) => {
+        const destDir = path.join(apiServicesDir, folderName);
+        
+        const sharedDir = path.join(sharedTemplateDir, folderName);
+        if (fs.existsSync(sharedDir)) {
+          this.copyRecursiveSync(sharedDir, destDir, true);
+        }
+
+        const templateDir = path.join(templateBaseDir, folderName);
+        if (fs.existsSync(templateDir)) {
+          this.copyRecursiveSync(templateDir, destDir, true);
+        }
+        console.log(`[Reset] Reset ${folderName}`);
+      };
+
+      copyFolder('providers');
+      copyFolder('hooks');
+      copyFolder('auth-methods');
+      return;
+    }
+
+    // Normalizing target (e.g. src\api-services\hooks\useAuth.ts -> hooks/useAuth.ts)
+    let normalizedTarget = target.replace(/\\/g, '/');
+    normalizedTarget = normalizedTarget.replace(/^(src\/)?api-services\//, '');
+
+    const findInTemplates = (query, dirs) => {
+      let matches = [];
+      const search = (dir, currentPath = '') => {
+        if (!fs.existsSync(dir)) return;
+        fs.readdirSync(dir).forEach(file => {
+          const fullPath = path.join(dir, file);
+          const relativePath = path.join(currentPath, file).replace(/\\/g, '/');
+          
+          if (relativePath === query || relativePath.endsWith('/' + query) || file === query) {
+            matches.push({
+               sourcePath: fullPath,
+               relativePath: relativePath,
+               isDirectory: fs.statSync(fullPath).isDirectory()
+            });
+          } else if (fs.statSync(fullPath).isDirectory()) {
+            search(fullPath, relativePath);
+          }
+        });
+      };
+
+      dirs.forEach(d => search(d));
+      
+      const uniqueMatches = {};
+      matches.forEach(m => {
+          uniqueMatches[m.relativePath] = m;
+      });
+      return Object.values(uniqueMatches);
+    };
+
+    const matches = findInTemplates(normalizedTarget, [sharedTemplateDir, templateBaseDir]);
+
+    if (matches.length === 0) {
+       throw new Error(`Target "${target}" not found in any scaffold templates.`);
+    }
+
+    if (matches.length > 1) {
+       const paths = matches.map(m => m.relativePath).join(', ');
+       throw new Error(`Target "${target}" is ambiguous. Found multiple matches: ${paths}. Please provide a more specific path (e.g. "hooks/useAuth.ts").`);
+    }
+
+    const match = matches[0];
+    const destPath = path.join(apiServicesDir, match.relativePath);
+    
+    if (match.isDirectory) {
+        this.copyRecursiveSync(match.sourcePath, destPath, true);
+        console.log(`[Reset] Reset folder: ${match.relativePath}`);
+    } else {
+        if (!fs.existsSync(path.dirname(destPath))) {
+            fs.mkdirSync(path.dirname(destPath), { recursive: true });
+        }
+        fs.copyFileSync(match.sourcePath, destPath);
+        console.log(`[Reset] Reset file: ${match.relativePath}`);
     }
   }
 }
