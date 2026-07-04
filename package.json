@@ -1,6 +1,6 @@
 {
     "name": "reex-api-builder",
-    "version": "1.0.3",
+    "version": "2.0.0",
     "description": "CLI tool for Reex API Builder - Generate TypeScript types and React Query hooks from OpenAPI specs",
     "main": "server.js",
     "bin": {
@@ -31,19 +31,19 @@
     "engines": {
         "node": ">=16.0.0"
     },
-"files": [
-    "bin/",
-    "lib/",
-    "routes/",
-    "services/",
-    "templates/",
-    "templates-react/",
-    "templates-shared/",
-    "server.js",
-    "paths.js",
-    "README.md",
-    "LICENSE"
-],
+    "files": [
+        "bin/",
+        "lib/",
+        "routes/",
+        "services/",
+        "templates/",
+        "templates-react/",
+        "templates-shared/",
+        "server.js",
+        "paths.js",
+        "README.md",
+        "LICENSE"
+    ],
     "dependencies": {
         "axios": "^1.6.0",
         "chokidar": "^3.5.3",
