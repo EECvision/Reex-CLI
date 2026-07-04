@@ -1,7 +1,7 @@
 import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import { authConfig } from './auth.config';
-import { baseURL } from './api-services/user-config/constants';
+import { baseURL, unwrapResponseData } from './api-services/user-config/constants';
 
 // Extend NextAuth types to include accessToken
 declare module "next-auth" {
@@ -33,8 +33,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           if (!res.ok) return null;
 
           const raw = await res.json();
-          // API wraps payload in a `data` property (same unwrap as useAuth.ts)
-          const data = raw?.data ?? raw;
+          const data = unwrapResponseData ? (raw?.data ?? raw) : raw;
           // Return user + accessToken so the JWT callback can capture it
           return {
             id: data.id ?? "1",

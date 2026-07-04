@@ -85,19 +85,13 @@ const createProjectRouter = (apiTargetDir) => {
             // 1. Update constants.ts (Base URL) — lives in user-config/
             const constantsPath = path.join(userConfigDir, 'constants.ts');
             if (baseUrl) {
-                let constantsContent = "";
-                try {
-                    const framework = generatorService.detectFramework(apiTargetDir);
-                    if (framework === 'react') {
-                        constantsContent = `export const baseURL = import.meta.env.VITE_API_BASE_URL || "${baseUrl}";\n`;
-                    } else {
-                        constantsContent = `export const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL || "${baseUrl}";\n`;
-                    }
-                } catch (e) {
-                    // Fallback to Next.js sty le if detection fails
-                    constantsContent = `export const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL || "${baseUrl}";\n`;
-                }
+                const constantsContent = `// Edit this file to configure your API Base URL
+// For React/Vite projects, uncomment the next line and comment the process.env line
+// export const baseURL = import.meta.env.VITE_API_BASE_URL || "${baseUrl}";
+export const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL || "${baseUrl}";
 
+export const unwrapResponseData = true; // Set to false if your API does not wrap responses in a 'data' object
+`;
                 fs.writeFileSync(constantsPath, constantsContent);
             }
 

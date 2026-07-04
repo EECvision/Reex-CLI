@@ -2,6 +2,7 @@
 
 import { type TokenProvider } from "../types";
 import { authConfig } from "../../user-config/auth";
+import { unwrapResponseData } from "../../user-config/constants";
 
 let accessToken: string | null = null;
 let customHeaders: Record<string, string> | null = null;
@@ -77,7 +78,7 @@ export const cookieTokenProvider: CookieTokenProvider = {
         response?.config && response?.headers && response?.status;
 
       const unwrappedData = isRawAxiosResponse ? response.data : response;
-      const responseData = unwrappedData?.data ?? unwrappedData;
+      const responseData = unwrapResponseData ? (unwrappedData?.data ?? unwrappedData) : unwrappedData;
 
       accessToken = responseData.accessToken;
 

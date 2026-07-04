@@ -8,12 +8,10 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 
-import { useAppDispatch } from "@/store/hooks";
-import { clearUser } from "@/store/userSlice";
-
 import { apiClient } from "../api-client";
 import { getActiveProvider } from "../auth/manager";
 import { authConfig } from "../user-config/auth";
+import { unwrapResponseData } from "../user-config/constants";
 
 /**
  * Login hook that stores tokens on success via the active provider.
@@ -40,7 +38,9 @@ export const useLogin = (
         response?.config && response?.headers && response?.status;
 
       const unwrappedData = isRawAxiosResponse ? response.data : response;
-      return unwrappedData?.data ?? unwrappedData;
+      return unwrapResponseData
+        ? (unwrappedData?.data ?? unwrappedData)
+        : unwrappedData;
     },
     ...options,
     onSuccess: (data: any, variables, context) => {

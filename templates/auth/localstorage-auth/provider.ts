@@ -1,5 +1,6 @@
 // @internal — No changes needed
 import { authConfig } from "../../user-config/auth";
+import { unwrapResponseData } from "../../user-config/constants";
 import { type TokenProvider } from "../types";
 
 /**
@@ -111,7 +112,7 @@ export const localStorageTokenProvider: LocalStorageTokenProvider = {
           response?.config && response?.headers && response?.status;
 
         const unwrappedData = isRawAxiosResponse ? response.data : response;
-        const responseData = unwrappedData?.data ?? unwrappedData;
+        const responseData = unwrapResponseData ? (unwrappedData?.data ?? unwrappedData) : unwrappedData;
 
         const { accessToken: newAccess, refreshToken: newRefresh } =
           responseData;
