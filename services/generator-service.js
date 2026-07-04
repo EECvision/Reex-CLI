@@ -82,7 +82,7 @@ class GeneratorService {
 
       const sharedTemplateDir = path.join(__dirname, '../templates-shared');
       const templateBaseDir = framework === 'nextjs'
-        ? path.join(__dirname, '../templates')
+        ? path.join(__dirname, '../templates-next')
         : path.join(__dirname, '../templates-react');
 
       // Helper function to resolve paths
@@ -242,7 +242,7 @@ ${moduleNames.map((name) => `  ...${name}Api,`).join('\n')}
     const framework = this.detectFramework(apiTargetDir);
     const sharedTemplateDir = path.join(__dirname, '../templates-shared');
     const templateBaseDir = framework === 'nextjs'
-      ? path.join(__dirname, '../templates')
+      ? path.join(__dirname, '../templates-next')
       : path.join(__dirname, '../templates-react');
 
     const apiServicesDir = path.join(apiTargetDir, API_SERVICES_RELATIVE_DIR);
