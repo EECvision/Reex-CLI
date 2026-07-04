@@ -58,12 +58,10 @@ class GeneratorService {
    */
   regenerate(apiTargetDir) {
     const definitionsDir = path.join(apiTargetDir, API_SERVICES_RELATIVE_DIR, 'definitions');
-    const apiClientDir = path.join(apiTargetDir, API_SERVICES_RELATIVE_DIR, 'api-client');
     const userConfigDir = path.join(apiTargetDir, API_SERVICES_RELATIVE_DIR, 'user-config');
 
     // api-client files
-    const indexTimePath = path.join(apiClientDir, 'index.ts');
-    const clientBuilderPath = path.join(apiClientDir, 'core.ts');
+    const clientBuilderPath = path.join(apiTargetDir, API_SERVICES_RELATIVE_DIR, 'core.ts');
 
     // user-config files
     const constantsPath = path.join(userConfigDir, 'constants.ts');
@@ -73,10 +71,6 @@ class GeneratorService {
 
     try {
       console.log("[Generator] Regenerating Manifest & Hooks...");
-
-      if (!fs.existsSync(apiClientDir)) {
-        fs.mkdirSync(apiClientDir, { recursive: true });
-      }
 
       if (!fs.existsSync(userConfigDir)) {
         fs.mkdirSync(userConfigDir, { recursive: true });
@@ -118,19 +112,12 @@ class GeneratorService {
         }
       }
 
-      // 3. api-client/core.ts - Managed by Bridge (Internal)
-      const templateClientBuilderPath = resolveTemplateFile('api-client/core.ts');
+      // 3. core.ts - Managed by Bridge (Internal)
+      const templateClientBuilderPath = resolveTemplateFile('core.ts');
       if (templateClientBuilderPath) {
         // ALWAYS updated by bridge
         fs.copyFileSync(templateClientBuilderPath, clientBuilderPath);
-        console.log("[Generator] Updated api-client/core.ts from template");
-      }
-
-      // 4. api-client/index.ts - BARREL ONLY (Managed by Bridge)
-      const templateIndexPath = resolveTemplateFile('api-client/index.ts');
-      if (templateIndexPath) {
-        fs.copyFileSync(templateIndexPath, indexTimePath);
-        console.log("[Generator] Updated api-client/index.ts from template");
+        console.log("[Generator] Updated core.ts from template");
       }
 
 

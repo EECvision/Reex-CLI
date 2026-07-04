@@ -7,8 +7,9 @@ import axios, {
   type InternalAxiosRequestConfig,
 } from "axios";
 
-import type { ApiError, TokenProvider } from "../auth/types";
-import { baseURL } from "../user-config/constants";
+import type { ApiError, TokenProvider } from "./auth/types";
+import { baseURL, unwrapResponseData } from "./user-config/constants";
+import { proxyTokenProvider } from "./auth/manager";
 
 const API_TIMEOUT = 1080000;
 const REFRESH_TIMEOUT = 10000;
@@ -270,3 +271,9 @@ export const createApiClient = (
 
   return client;
 };
+
+/**
+ * The globally configured API client instance.
+ * It dynamically uses the Active Strategy defined in the AuthProvider.
+ */
+export const apiClient = createApiClient(proxyTokenProvider);

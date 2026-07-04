@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { cookieTokenProvider } from "./provider";
-import { apiClient } from "../../api-client";
+import { apiClient } from "../../../api-services/core";
 
 /**
  * Restores the user session on mount via the refresh endpoint.

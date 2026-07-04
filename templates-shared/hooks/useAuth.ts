@@ -8,7 +8,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 
-import { apiClient } from "../api-client";
+import { apiClient } from "../core";
 import { getActiveProvider } from "../auth/manager";
 import { authConfig } from "../user-config/auth";
 import { unwrapResponseData } from "../user-config/constants";

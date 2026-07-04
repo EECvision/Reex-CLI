@@ -85,6 +85,7 @@ class HookService {
       // 1. Generate the raw content
       const rawContent = `// Generated file - DO NOT EDIT
 ${tanstackImportLine}
+import { apiClient } from "../core";
 import { ${moduleName}Api } from "../definitions/${moduleName}";
 ${commonImports ? `import { ${commonImports} } from ".";` : ""}
 
