@@ -135,18 +135,21 @@ class GeneratorService {
 
       // 3c. Sync Clients (Auto-Prune unused clients) - REMOVED (Replaced by static api-client/index.ts)
 
-      // 4. Regenerate Barrel File (API_SERVICES_RELATIVE_DIR/index.ts)
+      // 4. Regenerate Barrel File (API_SERVICES_RELATIVE_DIR/definitions/index.ts)
       const moduleNames = Object.keys(manifest).sort();
       const barrelContent = `
-${moduleNames.map((name) => `import { ${name}Api } from "./definitions/${name}";`).join('\n')}
+${moduleNames.map((name) => `import { ${name}Api } from "./${name}";`).join('\n')}
 
 export const api = {
 ${moduleNames.map((name) => `  ...${name}Api,`).join('\n')}
 };
 `;
-      const barrelPath = path.join(apiTargetDir, API_SERVICES_RELATIVE_DIR, 'index.ts');
+      if (!fs.existsSync(definitionsDir)) {
+        fs.mkdirSync(definitionsDir, { recursive: true });
+      }
+      const barrelPath = path.join(definitionsDir, 'index.ts');
       fs.writeFileSync(barrelPath, barrelContent);
-      console.log(`[Generator] Regenerated ${API_SERVICES_RELATIVE_DIR}/index.ts`);
+      console.log(`[Generator] Regenerated ${API_SERVICES_RELATIVE_DIR}/definitions/index.ts`);
 
       // 7. Providers (Copy from templates)
       if (!fs.existsSync(providersDir)) {

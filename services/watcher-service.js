@@ -28,7 +28,7 @@ class WatcherService {
 
         watcher.on('all', (event, filePath) => {
             // Even though we scope the watch, be safe.
-            if (filePath.includes('generated')) return;
+            if (filePath.includes('generated') || filePath.endsWith('index.ts')) return;
 
             console.log(`[WATCHER] Change detected: ${event} ${filePath}`);
 
