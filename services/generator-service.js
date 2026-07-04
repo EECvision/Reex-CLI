@@ -86,14 +86,24 @@ class GeneratorService {
       const framework = this.detectFramework(apiTargetDir);
       console.log(`[Generator] Detected framework: ${framework}`);
 
+      const sharedTemplateDir = path.join(__dirname, '../templates-shared');
       const templateBaseDir = framework === 'nextjs'
         ? path.join(__dirname, '../templates')
         : path.join(__dirname, '../templates-react');
 
+      // Helper function to resolve paths
+      const resolveTemplateFile = (relativePath) => {
+        const fwPath = path.join(templateBaseDir, relativePath);
+        if (fs.existsSync(fwPath)) return fwPath;
+        const sharedPath = path.join(sharedTemplateDir, relativePath);
+        if (fs.existsSync(sharedPath)) return sharedPath;
+        return null;
+      };
+
       // 1. user-config/constants.ts - User Config (Base URL)
       if (!fs.existsSync(constantsPath)) {
-        const templateConstantsPath = path.join(templateBaseDir, 'user-config/constants.ts');
-        if (fs.existsSync(templateConstantsPath)) {
+        const templateConstantsPath = resolveTemplateFile('user-config/constants.ts');
+        if (templateConstantsPath) {
           fs.copyFileSync(templateConstantsPath, constantsPath);
           console.log("[Generator] Scaffoled user-config/constants.ts from template");
         }
@@ -101,24 +111,24 @@ class GeneratorService {
 
       // 2. user-config/auth.ts - User Config (Auth endpoints, custom URLs)
       if (!fs.existsSync(authPath)) {
-        const templateAuthPath = path.join(templateBaseDir, 'user-config/auth.ts');
-        if (fs.existsSync(templateAuthPath)) {
+        const templateAuthPath = resolveTemplateFile('user-config/auth.ts');
+        if (templateAuthPath) {
           fs.copyFileSync(templateAuthPath, authPath);
           console.log("[Generator] Scaffoled user-config/auth.ts from template");
         }
       }
 
       // 3. api-client/core.ts - Managed by Bridge (Internal)
-      const templateClientBuilderPath = path.join(templateBaseDir, 'api-client/core.ts');
-      if (fs.existsSync(templateClientBuilderPath)) {
+      const templateClientBuilderPath = resolveTemplateFile('api-client/core.ts');
+      if (templateClientBuilderPath) {
         // ALWAYS updated by bridge
         fs.copyFileSync(templateClientBuilderPath, clientBuilderPath);
         console.log("[Generator] Updated api-client/core.ts from template");
       }
 
       // 4. api-client/index.ts - BARREL ONLY (Managed by Bridge)
-      const templateIndexPath = path.join(templateBaseDir, 'api-client/index.ts');
-      if (fs.existsSync(templateIndexPath)) {
+      const templateIndexPath = resolveTemplateFile('api-client/index.ts');
+      if (templateIndexPath) {
         fs.copyFileSync(templateIndexPath, indexTimePath);
         console.log("[Generator] Updated api-client/index.ts from template");
       }
@@ -156,6 +166,11 @@ ${moduleNames.map((name) => `  ...${name}Api,`).join('\n')}
         fs.mkdirSync(providersDir, { recursive: true });
       }
 
+      const sharedProvidersDir = path.join(sharedTemplateDir, 'providers');
+      if (fs.existsSync(sharedProvidersDir)) {
+        this.copyRecursiveSync(sharedProvidersDir, providersDir);
+      }
+
       const templateProvidersDir = path.join(templateBaseDir, 'providers');
       if (fs.existsSync(templateProvidersDir)) {
         this.copyRecursiveSync(templateProvidersDir, providersDir);
@@ -170,6 +185,11 @@ ${moduleNames.map((name) => `  ...${name}Api,`).join('\n')}
         fs.mkdirSync(hooksDir, { recursive: true });
       }
 
+      const sharedHooksDir = path.join(sharedTemplateDir, 'hooks');
+      if (fs.existsSync(sharedHooksDir)) {
+        this.copyRecursiveSync(sharedHooksDir, hooksDir);
+      }
+
       const templateHooksDir = path.join(templateBaseDir, 'hooks');
       if (fs.existsSync(templateHooksDir)) {
         this.copyRecursiveSync(templateHooksDir, hooksDir);
@@ -182,6 +202,11 @@ ${moduleNames.map((name) => `  ...${name}Api,`).join('\n')}
       const authDir = path.join(apiTargetDir, API_SERVICES_RELATIVE_DIR, 'auth');
       if (!fs.existsSync(authDir)) {
         fs.mkdirSync(authDir, { recursive: true });
+      }
+
+      const sharedAuthDir = path.join(sharedTemplateDir, 'auth');
+      if (fs.existsSync(sharedAuthDir)) {
+        this.copyRecursiveSync(sharedAuthDir, authDir);
       }
 
       const templateAuthDir = path.join(templateBaseDir, 'auth');

@@ -1,16 +1,50 @@
 // @internal — No changes needed
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import axios, {
-  type AxiosInstance,
-  type InternalAxiosRequestConfig,
   AxiosError,
+  type AxiosInstance,
   type AxiosRequestConfig,
+  type InternalAxiosRequestConfig,
 } from "axios";
-import { baseURL } from "../user-config/constants";
-import type { TokenProvider, ApiError } from "../auth/types";
 
-const API_TIMEOUT = 30000;
+import type { ApiError, TokenProvider } from "../auth/types";
+import { baseURL } from "../user-config/constants";
+
+const API_TIMEOUT = 1080000;
 const REFRESH_TIMEOUT = 10000;
+
+// Helper to extract a human-readable string from various error response formats
+const formatErrorMessage = (data: any): string | undefined => {
+  if (!data) return undefined;
+
+  if (typeof data.error === "string") return data.error;
+  if (typeof data.message === "string") return data.message;
+  if (typeof data.msg === "string") return data.msg;
+
+  if (data.detail !== undefined && data.detail !== null) {
+    if (typeof data.detail === "string") return data.detail;
+
+    if (Array.isArray(data.detail)) {
+      return data.detail
+        .map((err: any) => {
+          const field =
+            Array.isArray(err.loc) && err.loc.length
+              ? err.loc[err.loc.length - 1]
+              : undefined;
+
+          const msg = err.msg || "Invalid value";
+          return field ? `${field}: ${msg}` : msg;
+        })
+        .join("; ");
+    }
+
+    if (typeof data.detail === "object") {
+      return data.detail.message || data.detail.msg || "Invalid request";
+    }
+  }
+
+  return undefined;
+};
 
 const DEFAULT_CONFIG: AxiosRequestConfig = {
   baseURL: baseURL,
@@ -77,7 +111,7 @@ export const createApiClient = (
   // Response interceptor: unwrap data, handle 401 refresh, normalize errors
   client.interceptors.response.use(
     (response) => {
-      const res = response?.data?.data ?? response?.data;
+      const res = response?.data;
 
       if (process.env.NODE_ENV === "development") {
         console.log(
@@ -146,7 +180,32 @@ export const createApiClient = (
           // Dispatch logout event on refresh failure
           if (typeof window !== "undefined") {
             window.dispatchEvent(new Event("auth:logout"));
+
+            // Notify useNotification consumers about the auth failure
+            window.dispatchEvent(
+              new CustomEvent("api:notification", {
+                detail: {
+                  id: crypto.randomUUID(),
+                  type: "error",
+                  message:
+                    formatErrorMessage(error.response?.data) ||
+                    "Authentication failed. Please log in again.",
+                  statusCode: 401,
+                  timestamp: new Date().toISOString(),
+                },
+              }),
+            );
           }
+
+          // Return early — notification already dispatched above; don't fall through
+          // to the generic error dispatch below.
+          return Promise.reject(refreshError);
+        } finally {
+          isRefreshing = false;
+        }
+      } else if (error.response?.status === 401) {
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new Event("auth:logout"));
 
           // Notify useNotification consumers about the auth failure
           window.dispatchEvent(
@@ -155,39 +214,35 @@ export const createApiClient = (
                 id: crypto.randomUUID(),
                 type: "error",
                 message:
-                  error.response?.data &&
-                    typeof error.response.data === "object" &&
-                    "message" in error.response.data
-                    ? (error.response.data as { message: string }).message
-                    : "Authentication failed. Please log in again.",
+                  formatErrorMessage(error.response?.data) ||
+                  "Authentication failed. Please log in again.",
                 statusCode: 401,
                 timestamp: new Date().toISOString(),
               },
             }),
           );
-
-          return Promise.reject(refreshError);
-        } finally {
-          isRefreshing = false;
         }
+
+        // Return early — notification already dispatched above; don't fall through
+        // to the generic error dispatch below.
+        throw error;
       }
 
       // Normalize error
       const responseData = error.response?.data as any;
       const apiError: ApiError = {
         message:
-          responseData?.message ||
-          responseData?.msg ||
+          formatErrorMessage(responseData) ||
           error.message ||
           "An unexpected error occurred",
-        code: responseData?.code,
+        code: responseData?.error || responseData?.code,
         statusCode: error.response?.status,
         originalError: error,
       };
 
       if (originalRequest) {
         const endpoint = `${originalRequest.method?.toUpperCase()} ${originalRequest.url}`;
-        console.error(`[API ERROR - ${endpoint}]`, {
+        console.log(`[API ERROR - ${endpoint}]`, {
           message: apiError.message,
           code: apiError.code,
           statusCode: apiError.statusCode,

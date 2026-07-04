@@ -1,6 +1,6 @@
 // @internal — No changes needed
-import { type TokenProvider } from "../types";
 import { authConfig } from "../../user-config/auth";
+import { type TokenProvider } from "../types";
 
 /**
  * LocalStorage Token Provider
@@ -11,6 +11,7 @@ import { authConfig } from "../../user-config/auth";
 
 let accessToken: string | null = null;
 let customHeaders: Record<string, string> | null = null;
+let refreshPromise: Promise<string | null> | null = null;
 
 interface LocalStorageTokenProvider extends TokenProvider {
   setTokens: (params: { accessToken: string; refreshToken?: string }) => void;
@@ -68,6 +69,7 @@ export const localStorageTokenProvider: LocalStorageTokenProvider = {
   clearTokens: () => {
     accessToken = null;
     customHeaders = null;
+    refreshPromise = null;
     if (typeof window !== "undefined") {
       localStorage.removeItem(authConfig.refreshTokenKey);
       localStorage.removeItem(authConfig.accessTokenKey);
@@ -77,48 +79,60 @@ export const localStorageTokenProvider: LocalStorageTokenProvider = {
 
   // Exchange refresh token for a new access token
   refreshToken: async () => {
-    try {
-      if (typeof window === "undefined") return null;
-
-      const storedRefreshToken = localStorage.getItem(
-        authConfig.refreshTokenKey,
-      );
-
-      // Fallback: use stored access token if no refresh token
-      if (!storedRefreshToken) {
-        const storedAccessToken = localStorage.getItem(
-          authConfig.accessTokenKey,
-        );
-        if (storedAccessToken) {
-          accessToken = storedAccessToken;
-          return accessToken;
-        }
-        throw new Error("No refresh token found");
-      }
-
-      const response = await authConfig.refreshWithToken(storedRefreshToken);
-
-      // Safely check if this is a raw Axios response wrapper
-      const isRawAxiosResponse =
-        response?.config && response?.headers && response?.status;
-
-      const unwrappedData = isRawAxiosResponse ? response.data : response;
-      const responseData = unwrappedData?.data ?? unwrappedData;
-
-      const { accessToken: newAccess, refreshToken: newRefresh } = responseData;
-      accessToken = newAccess;
-
-      if (newRefresh) {
-        localStorage.setItem(authConfig.refreshTokenKey, newRefresh);
-      }
-
-      return accessToken;
-    } catch {
-      console.warn("Refresh failed, logging out...");
-      accessToken = null;
-      localStorage.removeItem(authConfig.refreshTokenKey);
-      localStorage.removeItem(authConfig.accessTokenKey);
-      return null;
+    // If a refresh is already in progress, await the existing promise instead of making a new request
+    if (refreshPromise) {
+      return refreshPromise;
     }
+
+    refreshPromise = (async () => {
+      try {
+        if (typeof window === "undefined") return null;
+
+        const storedRefreshToken = localStorage.getItem(
+          authConfig.refreshTokenKey,
+        );
+
+        // Fallback: use stored access token if no refresh token
+        if (!storedRefreshToken) {
+          const storedAccessToken = localStorage.getItem(
+            authConfig.accessTokenKey,
+          );
+          if (storedAccessToken) {
+            accessToken = storedAccessToken;
+            return accessToken;
+          }
+          throw new Error("No refresh token found");
+        }
+
+        const response = await authConfig.refreshWithToken(storedRefreshToken);
+
+        // Safely check if this is a raw Axios response wrapper
+        const isRawAxiosResponse =
+          response?.config && response?.headers && response?.status;
+
+        const unwrappedData = isRawAxiosResponse ? response.data : response;
+        const responseData = unwrappedData?.data ?? unwrappedData;
+
+        const { accessToken: newAccess, refreshToken: newRefresh } =
+          responseData;
+        accessToken = newAccess;
+
+        if (newRefresh) {
+          localStorage.setItem(authConfig.refreshTokenKey, newRefresh);
+        }
+
+        return accessToken;
+      } catch {
+        console.warn("Refresh failed, logging out...");
+        accessToken = null;
+        localStorage.removeItem(authConfig.refreshTokenKey);
+        localStorage.removeItem(authConfig.accessTokenKey);
+        return null;
+      } finally {
+        refreshPromise = null;
+      }
+    })();
+
+    return refreshPromise;
   },
 };

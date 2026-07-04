@@ -41,3 +41,12 @@ export const proxyTokenProvider: TokenProvider = {
     return activeTokenProvider.setCustomHeaders;
   },
 };
+
+export function getActiveProvider(): {
+  getToken?: () => Promise<string | null> | string | null;
+  setTokens?: (p: { accessToken: string; refreshToken?: string }) => void;
+  clearTokens?: () => void;
+  setCustomHeaders?: (headers: Record<string, string>) => void;
+} | null {
+  return activeTokenProvider ?? null;
+}

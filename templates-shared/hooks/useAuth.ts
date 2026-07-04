@@ -1,10 +1,18 @@
 // @internal — No changes needed
-
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useCallback, useState, useEffect } from "react";
-import { useMutation, type UseMutationOptions } from "@tanstack/react-query";
-import { activeTokenProvider } from "../auth/manager";
+import { useCallback, useEffect, useState } from "react";
+
+import {
+  type UseMutationOptions,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
+
+import { useAppDispatch } from "@/store/hooks";
+import { clearUser } from "@/store/userSlice";
+
 import { apiClient } from "../api-client";
+import { getActiveProvider } from "../auth/manager";
 import { authConfig } from "../user-config/auth";
 
 /**
@@ -38,7 +46,8 @@ export const useLogin = (
     onSuccess: (data: any, variables, context) => {
       const accessToken =
         data?.accessToken ?? data?.access_token ?? data?.token;
-      const refreshToken = data?.refreshToken ?? data?.refresh_token ?? data?.refresh;
+      const refreshToken =
+        data?.refreshToken ?? data?.refresh_token ?? data?.refresh;
 
       const provider = getActiveProvider();
       provider?.setTokens?.({ accessToken, refreshToken });
@@ -72,6 +81,7 @@ export const useLogin = (
 export const useLogout = (options?: { callServer?: boolean }) => {
   const { callServer = true } = options ?? {};
   const provider = getActiveProvider();
+  const queryClient = useQueryClient();
 
   const logout = useCallback(async () => {
     try {
@@ -90,6 +100,9 @@ export const useLogout = (options?: { callServer?: boolean }) => {
       }
       provider?.clearTokens?.();
 
+      // Clear React Query cache
+      queryClient.clear();
+
       if (typeof window !== "undefined") {
         window.dispatchEvent(new Event("auth:logout"));
       }
@@ -97,11 +110,14 @@ export const useLogout = (options?: { callServer?: boolean }) => {
       console.error("[useLogout] Logout failed:", error);
       provider?.clearTokens?.();
 
+      // Clear React Query cache even on failure
+      queryClient.clear();
+
       if (typeof window !== "undefined") {
         window.dispatchEvent(new Event("auth:logout"));
       }
     }
-  }, [callServer, provider]);
+  }, [callServer, provider, queryClient]);
 
   return { logout };
 };
@@ -125,6 +141,7 @@ export const useIsAuthenticated = () => {
     const checkAuth = async () => {
       try {
         const token = await provider?.getToken?.();
+
         setIsAuthenticated(!!token);
       } catch {
         setIsAuthenticated(false);
@@ -154,13 +171,3 @@ export const useIsAuthenticated = () => {
 
   return { isAuthenticated, isLoading };
 };
-
-// Resolve the active token provider from clients.ts
-function getActiveProvider(): {
-  getToken?: () => Promise<string | null> | string | null;
-  setTokens?: (p: { accessToken: string; refreshToken?: string }) => void;
-  clearTokens?: () => void;
-  setCustomHeaders?: (headers: Record<string, string>) => void;
-} | null {
-  return activeTokenProvider ?? null;
-}
