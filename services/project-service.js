@@ -28,7 +28,7 @@ class ProjectService {
             skipAddingFilesFromTsConfig: true,
         });
 
-        const files = fs.readdirSync(targetDir).filter((f) => f.endsWith(".ts"));
+        const files = fs.readdirSync(targetDir).filter((f) => f.endsWith(".ts") && f !== "index.ts");
         const apiManifest = {};
 
         for (const file of files) {
@@ -170,7 +170,7 @@ class ProjectService {
             skipAddingFilesFromTsConfig: true,
         });
 
-        const files = fs.readdirSync(targetDir).filter((f) => f.endsWith(".ts"));
+        const files = fs.readdirSync(targetDir).filter((f) => f.endsWith(".ts") && f !== "index.ts");
         console.log(`[ProjectService] Found ${files.length} definition files to check.`);
 
         for (const file of files) {
@@ -282,18 +282,21 @@ class ProjectService {
 
     /**
      * Reads the project config directly from core.ts and clients.ts.
-     * @param {string} configDir - Path to src/api-services/config
+     * @param {string} apiTargetDir - Path to the root of the user project
      */
-    getProjectConfig(configDir) {
-        if (!fs.existsSync(configDir)) return { baseURL: "http://localhost:3000/api", clients: {}, clientPrefixes: {} };
-        const corePath = path.join(configDir, "core.ts");
-        const clientsPath = path.join(configDir, "clients.ts");
+    getProjectConfig(apiTargetDir) {
+        const { API_SERVICES_RELATIVE_DIR } = require('../paths');
+        const apiServicesDir = path.join(apiTargetDir, API_SERVICES_RELATIVE_DIR);
+
+        if (!fs.existsSync(apiServicesDir)) return { baseURL: "http://localhost:3000/api", clients: {}, clientPrefixes: {} };
+        const corePath = path.join(apiServicesDir, "core.ts");
+        const clientsPath = path.join(apiServicesDir, "clients.ts");
 
         const config = { clients: {}, clientPrefixes: {} };
         const project = new Project({ skipAddingFilesFromTsConfig: true });
 
         // constants.ts and auth.ts were merged into api.config.ts
-        const apiConfigPath = path.join(configDir, "..", "api.config.ts");
+        const apiConfigPath = path.join(apiServicesDir, "api.config.ts");
 
         // 1. Get BaseURL from api.config.ts (preferred) or core.ts (fallback)
         const configSourcePath = fs.existsSync(apiConfigPath) ? apiConfigPath : corePath;
@@ -302,8 +305,7 @@ class ProjectService {
             const sourceFile = project.addSourceFileAtPath(configSourcePath);
 
             // Resolve Env Vars logic (Simplified Copy)
-            // Assumes project root is 3 levels up from configDir
-            const projectRoot = path.resolve(configDir, "../../../");
+            const projectRoot = apiTargetDir;
             const envConfig = {};
             [".env", ".env.local"].forEach(envFile => {
                 const envPath = path.join(projectRoot, envFile);
@@ -315,37 +317,99 @@ class ProjectService {
 
             const resolveValue = (node) => {
                 if (!node) return undefined;
-                if (node.getKind() === SyntaxKind.StringLiteral) return node.getLiteralValue();
-                if (node.getKind() === SyntaxKind.NoSubstitutionTemplateLiteral) return node.getLiteralText();
-                if (node.getKind() === SyntaxKind.PropertyAccessExpression) {
-                    const text = node.getText();
+
+                // Unwrap type assertions, non-null assertions, and parentheses
+                let current = node;
+                while (
+                    current.getKind() === SyntaxKind.AsExpression ||
+                    current.getKind() === SyntaxKind.TypeAssertion ||
+                    current.getKind() === SyntaxKind.NonNullExpression ||
+                    current.getKind() === SyntaxKind.SatisfiesExpression ||
+                    current.getKind() === SyntaxKind.ParenthesizedExpression
+                ) {
+                    current = current.getExpression();
+                }
+
+                if (current.getKind() === SyntaxKind.StringLiteral) return current.getLiteralValue();
+                if (current.getKind() === SyntaxKind.NoSubstitutionTemplateLiteral) return current.getLiteralText();
+                
+                if (current.getKind() === SyntaxKind.PropertyAccessExpression) {
+                    const text = current.getText();
                     if (text.startsWith("process.env.")) {
                         const varName = text.replace("process.env.", "");
                         return envConfig[varName] || process.env[varName];
                     }
-                }
-                if (node.getKind() === SyntaxKind.BinaryExpression) {
-                    const operator = node.getOperatorToken().getText();
-                    if (operator === "||" || operator === "??") {
-                        const leftVal = resolveValue(node.getLeft());
-                        if (leftVal) return leftVal;
-                        return resolveValue(node.getRight());
+                    if (text.startsWith("import.meta.env.")) {
+                        const varName = text.replace("import.meta.env.", "");
+                        return envConfig[varName] || process.env[varName];
                     }
                 }
+                
+                if (current.getKind() === SyntaxKind.BinaryExpression) {
+                    const operator = current.getOperatorToken().getText();
+                    if (operator === "||" || operator === "??") {
+                        const leftVal = resolveValue(current.getLeft());
+                        if (operator === "||") {
+                            if (leftVal) return leftVal;
+                            return resolveValue(current.getRight());
+                        } else if (operator === "??") {
+                            if (leftVal !== undefined && leftVal !== null) return leftVal;
+                            return resolveValue(current.getRight());
+                        }
+                    }
+                }
+                
                 return undefined;
             };
 
-            const baseURLDecl = sourceFile.getVariableDeclaration("baseURL");
-            if (baseURLDecl) {
-                const val = resolveValue(baseURLDecl.getInitializer());
-                config.baseURL = val || "http://localhost:3000/api";
+            // Try extracting from apiConfig object
+            let foundBaseURL = undefined;
+            const apiConfigDecl = sourceFile.getVariableDeclaration("apiConfig");
+            
+            if (apiConfigDecl) {
+                let initializer = apiConfigDecl.getInitializer();
+                
+                // Unwrap AsExpression or SatisfiesExpression on the object literal
+                while (
+                    initializer && 
+                    (initializer.getKind() === SyntaxKind.AsExpression ||
+                     initializer.getKind() === SyntaxKind.TypeAssertion ||
+                     initializer.getKind() === SyntaxKind.SatisfiesExpression ||
+                     initializer.getKind() === SyntaxKind.ParenthesizedExpression)
+                ) {
+                    initializer = initializer.getExpression();
+                }
+
+                if (initializer && initializer.getKind() === SyntaxKind.ObjectLiteralExpression) {
+                    const prop = initializer.getProperty("baseURL");
+                    if (prop) {
+                        let valNode = null;
+                        
+                        if (prop.getKind() === SyntaxKind.PropertyAssignment) {
+                            valNode = prop.getInitializer();
+                        } else if (prop.getKind() === SyntaxKind.ShorthandPropertyAssignment) {
+                            const nameNode = prop.getNameNode();
+                            const decl = sourceFile.getVariableDeclaration(nameNode.getText());
+                            if (decl) {
+                                valNode = decl.getInitializer();
+                            }
+                        }
+
+                        if (valNode) {
+                            foundBaseURL = resolveValue(valNode);
+                        }
+                    }
+                }
+            }
+
+            if (foundBaseURL !== undefined && foundBaseURL !== null) {
+                config.baseURL = foundBaseURL;
             } else {
                 config.baseURL = "http://localhost:3000/api";
             }
         } else {
             config.baseURL = "http://localhost:3000/api";
         }
-
 
         // 2. Get Clients from clients.ts
         if (fs.existsSync(clientsPath)) {
@@ -385,7 +449,7 @@ class ProjectService {
         }
 
         // 3. Get metadata from metadata.json
-        const metadataPath = path.join(configDir, "..", ".reex", 'metadata.json');
+        const metadataPath = path.join(apiServicesDir, ".reex", 'metadata.json');
         if (fs.existsSync(metadataPath)) {
             try {
                 const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
@@ -489,7 +553,7 @@ class ProjectService {
      */
     getModules(targetDir) {
         if (!fs.existsSync(targetDir)) return {};
-        const files = fs.readdirSync(targetDir).filter((f) => f.endsWith(".ts"));
+        const files = fs.readdirSync(targetDir).filter((f) => f.endsWith(".ts") && f !== "index.ts");
         const modules = {};
         files.forEach(f => {
             const name = f.replace(".ts", "");

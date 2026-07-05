@@ -17,9 +17,8 @@ const createProjectRouter = (apiTargetDir) => {
 
     // Get Config
     router.get('/config', (req, res) => {
-        const configDir = path.join(apiTargetDir, API_SERVICES_RELATIVE_DIR, 'config');
         try {
-            const config = projectService.getProjectConfig(configDir);
+            const config = projectService.getProjectConfig(apiTargetDir);
             res.json(config);
         } catch (e) {
             console.error(`[CONFIG] Error:`, e);
@@ -46,7 +45,7 @@ const createProjectRouter = (apiTargetDir) => {
             if (!fs.existsSync(definitionsDir)) {
                 return res.json({});
             }
-            const files = fs.readdirSync(definitionsDir).filter(f => f.endsWith('.ts'));
+            const files = fs.readdirSync(definitionsDir).filter(f => f.endsWith('.ts') && f !== 'index.ts');
             const definitions = {};
             files.forEach(file => {
                 const content = fs.readFileSync(path.join(definitionsDir, file), 'utf8');
