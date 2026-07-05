@@ -149,16 +149,14 @@ ${moduleNames.map((name) => `  ...${name}Api,`).join('\n')}
       }
 
       const sharedProvidersDir = path.join(sharedTemplateDir, 'providers');
-      if (fs.existsSync(sharedProvidersDir)) {
-        this.copyRecursiveSync(sharedProvidersDir, providersDir, false);
-      }
-
       const templateProvidersDir = path.join(templateBaseDir, 'providers');
-      if (fs.existsSync(templateProvidersDir)) {
-        this.copyRecursiveSync(templateProvidersDir, providersDir, false);
-        console.log("[Generator] Scaffolded providers from templates (if missing)");
+      
+      if (!fs.existsSync(sharedProvidersDir) && !fs.existsSync(templateProvidersDir)) {
+        console.warn(`[Generator] Warning: templates/providers directory not found in shared or ${framework}`);
       } else {
-        console.warn(`[Generator] Warning: ${framework} templates/providers directory not found`);
+        if (fs.existsSync(sharedProvidersDir)) this.copyRecursiveSync(sharedProvidersDir, providersDir, false);
+        if (fs.existsSync(templateProvidersDir)) this.copyRecursiveSync(templateProvidersDir, providersDir, false);
+        console.log("[Generator] Scaffolded providers from templates (if missing)");
       }
 
       // 7b. Hooks (Copy from templates)
@@ -168,16 +166,14 @@ ${moduleNames.map((name) => `  ...${name}Api,`).join('\n')}
       }
 
       const sharedHooksDir = path.join(sharedTemplateDir, 'hooks');
-      if (fs.existsSync(sharedHooksDir)) {
-        this.copyRecursiveSync(sharedHooksDir, hooksDir, false);
-      }
-
       const templateHooksDir = path.join(templateBaseDir, 'hooks');
-      if (fs.existsSync(templateHooksDir)) {
-        this.copyRecursiveSync(templateHooksDir, hooksDir, false);
-        console.log("[Generator] Scaffolded hooks from templates (if missing)");
+      
+      if (!fs.existsSync(sharedHooksDir) && !fs.existsSync(templateHooksDir)) {
+        console.warn(`[Generator] Warning: templates/hooks directory not found in shared or ${framework}`);
       } else {
-        console.warn(`[Generator] Warning: ${framework} templates/hooks directory not found`);
+        if (fs.existsSync(sharedHooksDir)) this.copyRecursiveSync(sharedHooksDir, hooksDir, false);
+        if (fs.existsSync(templateHooksDir)) this.copyRecursiveSync(templateHooksDir, hooksDir, false);
+        console.log("[Generator] Scaffolded hooks from templates (if missing)");
       }
 
       // 7c. Auth (Copy from templates)
@@ -187,16 +183,14 @@ ${moduleNames.map((name) => `  ...${name}Api,`).join('\n')}
       }
 
       const sharedAuthDir = path.join(sharedTemplateDir, 'auth-methods');
-      if (fs.existsSync(sharedAuthDir)) {
-        this.copyRecursiveSync(sharedAuthDir, authDir, false);
-      }
-
       const templateAuthDir = path.join(templateBaseDir, 'auth-methods');
-      if (fs.existsSync(templateAuthDir)) {
-        this.copyRecursiveSync(templateAuthDir, authDir, false);
-        console.log("[Generator] Scaffolded auth-methods from templates (if missing)");
+      
+      if (!fs.existsSync(sharedAuthDir) && !fs.existsSync(templateAuthDir)) {
+        console.warn(`[Generator] Warning: templates/auth-methods directory not found in shared or ${framework}`);
       } else {
-        console.warn(`[Generator] Warning: ${framework} templates/auth-methods directory not found`);
+        if (fs.existsSync(sharedAuthDir)) this.copyRecursiveSync(sharedAuthDir, authDir, false);
+        if (fs.existsSync(templateAuthDir)) this.copyRecursiveSync(templateAuthDir, authDir, false);
+        console.log("[Generator] Scaffolded auth-methods from templates (if missing)");
       }
 
       // 8. Install Dependencies (axios, @tanstack/react-query)
