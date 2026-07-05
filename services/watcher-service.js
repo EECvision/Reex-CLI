@@ -24,6 +24,7 @@ class WatcherService {
         });
 
         let debounceTimer;
+        let configDebounceTimer;
         let isSyncing = false;
 
         watcher.on('all', (event, filePath) => {
@@ -31,6 +32,16 @@ class WatcherService {
             if (filePath.includes('generated') || filePath.endsWith('index.ts')) return;
 
             console.log(`[WATCHER] Change detected: ${event} ${filePath}`);
+
+            // If only the config file changed, skip heavy generation and just notify UI
+            if (filePath.endsWith('api.config.ts')) {
+                clearTimeout(configDebounceTimer);
+                configDebounceTimer = setTimeout(() => {
+                    console.log(`[WATCHER] Config updated, notifying UI to sync.`);
+                    sseService.broadcast(Date.now().toString(), 'project:updated', 'Configuration updated');
+                }, 500);
+                return;
+            }
 
             // Immediate Feedback: Notify client that we see changes
             if (!isSyncing) {
