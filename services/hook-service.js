@@ -260,6 +260,8 @@ import {
   useQuery,
 } from "@tanstack/react-query";
 
+import { getActiveProvider } from "../auth-methods/manager";
+
 // 1. Mutation Wrapper
 export const useApiMutation = <
   TData = unknown,
@@ -293,12 +295,16 @@ export const useApiQuery = <
     "queryKey" | "queryFn"
   >,
 ): UseQueryResult<TData, TError> => {
+  const isEnabled =
+    options?.enabled !== false ? !!getActiveProvider()?.getToken?.() : false;
+
   return useQuery<TQueryFnData, TError, TData, TQueryKey>({
     queryKey,
     queryFn,
     refetchOnWindowFocus: false,
     retry: 1,
     ...options,
+    enabled: isEnabled,
   });
 };
 

@@ -30,7 +30,10 @@ export const useLogin = (
 
   const mutation = useMutation({
     mutationFn: async (credentials: any) => {
-      const response = await apiClient.post(apiConfig.auth.loginUrl, credentials);
+      const response = await apiClient.post(
+        apiConfig.auth.loginUrl,
+        credentials,
+      );
 
       // Safely check if this is a raw Axios response wrapper
       const isRawAxiosResponse =
@@ -100,6 +103,7 @@ export const useLogout = (options?: { callServer?: boolean }) => {
       provider?.clearTokens?.();
 
       // Clear React Query cache
+      await queryClient.cancelQueries();
       queryClient.clear();
 
       if (typeof window !== "undefined") {
@@ -110,6 +114,7 @@ export const useLogout = (options?: { callServer?: boolean }) => {
       provider?.clearTokens?.();
 
       // Clear React Query cache even on failure
+      await queryClient.cancelQueries();
       queryClient.clear();
 
       if (typeof window !== "undefined") {
