@@ -11,7 +11,7 @@ import type { ApiError, TokenProvider } from "./auth-methods/types";
 import { apiConfig } from "./api.config";
 import { proxyTokenProvider } from "./auth-methods/manager";
 
-const API_TIMEOUT = 1080000;
+const API_TIMEOUT = 30000;
 const REFRESH_TIMEOUT = 10000;
 
 // Helper to extract a human-readable string from various error response formats
@@ -113,7 +113,9 @@ export const createApiClient = (
   client.interceptors.response.use(
     (response) => {
       const rawData = response?.data;
-      const res = apiConfig.unwrapResponseData ? (rawData?.data ?? rawData) : rawData;
+      const res = apiConfig.unwrapResponseData
+        ? (rawData?.data ?? rawData)
+        : rawData;
 
       if (process.env.NODE_ENV === "development") {
         console.log(
