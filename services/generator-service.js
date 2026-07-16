@@ -58,7 +58,7 @@ class GeneratorService {
    * 7. Copies Providers (from templates)
    * @param {string} apiTargetDir 
    */
-  regenerate(apiTargetDir) {
+  async regenerate(apiTargetDir) {
     const definitionsDir = path.join(apiTargetDir, API_SERVICES_RELATIVE_DIR, 'definitions');
 
     // api-client files
@@ -115,7 +115,7 @@ class GeneratorService {
 
       // 2. Generate Manifest
       // Prune definition files first (remove unused interfaces/imports)
-      projectService.pruneUnusedDefinitions(definitionsDir);
+      await projectService.pruneUnusedDefinitions(definitionsDir);
 
       const manifest = projectService.generateManifest(definitionsDir);
 
@@ -223,6 +223,33 @@ ${moduleNames.map((name) => `  ...${name}Api,`).join('\n')}
       }
 
 
+
+      // 9. Run Prettier globally across all generated files
+      try {
+          console.log("[Generator] Starting Prettier formatting pass...");
+          const { execSync } = require('child_process');
+          
+          // Try to use the developer's local prettier first to ensure 100% format matching
+          let prettierPath;
+          const devPrettierV3 = path.join(apiTargetDir, 'node_modules', 'prettier', 'bin', 'prettier.cjs');
+          const devPrettierV2 = path.join(apiTargetDir, 'node_modules', 'prettier', 'bin-prettier.js');
+          
+          if (fs.existsSync(devPrettierV3)) {
+              prettierPath = devPrettierV3;
+          } else if (fs.existsSync(devPrettierV2)) {
+              prettierPath = devPrettierV2;
+          } else {
+              // Fallback to the bridge's prettier
+              prettierPath = path.join(path.dirname(require.resolve('prettier/package.json')), 'bin/prettier.cjs');
+          }
+          
+          const targetGlob = path.posix.join(API_SERVICES_RELATIVE_DIR, '**/*.{ts,tsx}');
+          
+          execSync(`node "${prettierPath}" --write "${targetGlob}"`, { cwd: apiTargetDir, stdio: 'inherit' });
+          console.log("[Generator] Prettier formatting pass complete using:", prettierPath);
+      } catch (err) {
+          console.error("[Generator] Failed to run Prettier globally:", err.message);
+      }
 
       sseService.broadcast(Date.now().toString(), 'project:updated', 'Project generated');
       console.log("[Generator] Regeneration Complete");

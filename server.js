@@ -44,7 +44,7 @@ function startServer(port) {
     // Initial Generation
     if (apiTargetDir) {
         console.log("[STARTUP] Triggering initial generation...");
-        generatorService.regenerate(apiTargetDir);
+        generatorService.regenerate(apiTargetDir).catch(e => console.error(e));
     }
 
     // ---------------------------------------------------------
@@ -57,9 +57,9 @@ function startServer(port) {
     app.get('/api/health', (req, res) => res.json({ status: 'ok', cwd: process.cwd(), targetDir: apiTargetDir, apiServicesDir: require('./paths').API_SERVICES_RELATIVE_DIR }));
 
     // Debug: Force Regeneration
-    app.post('/api/debug/regenerate', (req, res) => {
+    app.post('/api/debug/regenerate', async (req, res) => {
         try {
-            const result = generatorService.regenerate(apiTargetDir);
+            const result = await generatorService.regenerate(apiTargetDir);
             res.json(result);
         } catch (e) {
             res.status(500).json({ error: e.message, stack: e.stack });

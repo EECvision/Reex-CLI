@@ -50,9 +50,9 @@ class WatcherService {
             }
 
             clearTimeout(debounceTimer);
-            debounceTimer = setTimeout(() => {
+            debounceTimer = setTimeout(async () => {
                 try {
-                    generatorService.regenerate(apiTargetDir);
+                    await generatorService.regenerate(apiTargetDir);
                 } catch (e) {
                     console.error("Regeneration failed:", e);
                 } finally {

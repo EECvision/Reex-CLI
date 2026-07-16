@@ -158,7 +158,7 @@ class ProjectService {
      * Prunes unused interfaces, types, and imports from definition files.
      * @param {string} targetDir - The directory containing API definitions.
      */
-    pruneUnusedDefinitions(targetDir) {
+    async pruneUnusedDefinitions(targetDir) {
         console.log(`[ProjectService] Starting Prune in: ${targetDir}`);
         if (!fs.existsSync(targetDir)) {
             console.log(`[ProjectService] Target dir does not exist: ${targetDir}`);
@@ -266,7 +266,19 @@ class ProjectService {
 
                 if (modified) {
                     try {
-                        sourceFile.saveSync();
+                        const rawText = sourceFile.getFullText();
+                        const filePath = sourceFile.getFilePath();
+                        try {
+                            const prettier = require('prettier');
+                            const options = await prettier.resolveConfig(filePath) || {};
+                            options.filepath = filePath;
+                            options.pluginSearchDirs = [process.cwd()];
+                            const formattedText = await prettier.format(rawText, options);
+                            fs.writeFileSync(filePath, formattedText, 'utf8');
+                        } catch(err) {
+                            console.warn('[Prettier] Failed to format, falling back to ts-morph:', err.message);
+                            sourceFile.saveSync();
+                        }
                         console.log(`[ProjectService] Pruned unused code from ${file}`);
                     } catch (e) {
                         console.error(`[ProjectService] Failed to save pruned file ${file}:`, e);
