@@ -60,7 +60,7 @@ program
       startServer(finalPort);
 
       // Construct the UI URL using the final port
-      const clientUrl = `"https://reex-api-builder.toolshq.app/?localPort=${finalPort}`;
+      const clientUrl = `https://reex-api-builder.toolshq.app/?localPort=${finalPort}`;
 
       if (options.open !== false) {
         console.log(`\n🌐 Opening UI: ${clientUrl}`);

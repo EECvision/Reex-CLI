@@ -1,12 +1,14 @@
 // @user-config — changes needed: Update routes, keys, and endpoints to match your backend
 import axios from "axios";
 
+const BASE_URL = "https://example.com/api/v1";
+
 export const apiConfig = {
   /**
    * 1. CORE SETTINGS
    * Update this to your actual backend URL or rely on environment variables
    */
-  baseURL: "https://example.com/api/v1",
+  baseURL: BASE_URL,
 
   /** Set to true if your API wraps responses in a 'data' object */
   unwrapResponseData: false,
@@ -21,7 +23,7 @@ export const apiConfig = {
     logoutMethod: "POST" as "GET" | "POST",
     accessTokenKey: "access_token",
     refreshTokenKey: "refresh_token",
-    refreshEndpoint: "/auth/refresh",
+    refreshEndpoint: `${BASE_URL}/auth/refresh`,
 
     /** Refresh via httpOnly cookie. Edit the method/headers to match your backend. */
     refreshWithCookie: async () => {

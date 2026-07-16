@@ -358,6 +358,14 @@ class ProjectService {
                     }
                 }
                 
+                if (current.getKind() === SyntaxKind.Identifier) {
+                    const name = current.getText();
+                    const decl = sourceFile.getVariableDeclaration(name);
+                    if (decl) {
+                        return resolveValue(decl.getInitializer());
+                    }
+                }
+                
                 if (current.getKind() === SyntaxKind.BinaryExpression) {
                     const operator = current.getOperatorToken().getText();
                     if (operator === "||" || operator === "??") {
