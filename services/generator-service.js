@@ -234,31 +234,54 @@ ${moduleNames.map((name) => `  ...${name}Api,`).join('\n')}
           const devPrettierV3 = path.join(apiTargetDir, 'node_modules', 'prettier', 'bin', 'prettier.cjs');
           const devPrettierV2 = path.join(apiTargetDir, 'node_modules', 'prettier', 'bin-prettier.js');
           
+          // Check if project has Prettier configured or installed
+          const packageJsonPath = path.join(apiTargetDir, 'package.json');
+          let usesPrettier = false;
+          if (fs.existsSync(packageJsonPath)) {
+              try {
+                  const pkg = require(packageJsonPath);
+                  usesPrettier = !!(
+                      (pkg.dependencies && pkg.dependencies.prettier) ||
+                      (pkg.devDependencies && pkg.devDependencies.prettier) ||
+                      pkg.prettier
+                  );
+              } catch(e) {}
+          }
+          
+          if (!usesPrettier) {
+              const prettierConfigs = ['.prettierrc', '.prettierrc.json', '.prettierrc.js', 'prettier.config.js', '.prettierrc.yaml', '.prettierrc.yml'];
+              usesPrettier = prettierConfigs.some(cfg => fs.existsSync(path.join(apiTargetDir, cfg)));
+          }
+          
           if (fs.existsSync(devPrettierV3)) {
               prettierPath = devPrettierV3;
           } else if (fs.existsSync(devPrettierV2)) {
               prettierPath = devPrettierV2;
-          } else {
-              // Fallback to the bridge's prettier
+          } else if (usesPrettier) {
+              // Fallback to the bridge's prettier if the project uses it but hasn't installed node_modules yet
               prettierPath = path.join(path.dirname(require.resolve('prettier/package.json')), 'bin/prettier.cjs');
           }
           
-                    let targetGlobs = `"${path.posix.join(API_SERVICES_RELATIVE_DIR, '**/*.{ts,tsx}')}"`;
-          if (changedModules && changedModules.length > 0) {
-              const globs = [];
-              for (const mod of changedModules) {
-                  const pascal = mod.charAt(0).toUpperCase() + mod.slice(1);
-                  globs.push(`"${API_SERVICES_RELATIVE_DIR}/definitions/${mod}.ts"`);
-                  globs.push(`"${API_SERVICES_RELATIVE_DIR}/generated/use${pascal}Queries.ts"`);
-                  globs.push(`"${API_SERVICES_RELATIVE_DIR}/types/${mod}/**/*.ts"`);
+          if (!prettierPath) {
+              console.log("[Generator] No local Prettier configured in project. Skipping formatting pass to preserve existing styles.");
+          } else {
+              let targetGlobs = `"${path.posix.join(API_SERVICES_RELATIVE_DIR, '**/*.{ts,tsx}')}"`;
+              if (changedModules && changedModules.length > 0) {
+                  const globs = [];
+                  for (const mod of changedModules) {
+                      const pascal = mod.charAt(0).toUpperCase() + mod.slice(1);
+                      globs.push(`"${API_SERVICES_RELATIVE_DIR}/definitions/${mod}.ts"`);
+                      globs.push(`"${API_SERVICES_RELATIVE_DIR}/generated/use${pascal}Queries.ts"`);
+                      globs.push(`"${API_SERVICES_RELATIVE_DIR}/types/${mod}/**/*.ts"`);
+                  }
+                  globs.push(`"${API_SERVICES_RELATIVE_DIR}/generated/index.ts"`);
+                  globs.push(`"${API_SERVICES_RELATIVE_DIR}/definitions/index.ts"`);
+                  targetGlobs = globs.join(' ');
               }
-              globs.push(`"${API_SERVICES_RELATIVE_DIR}/generated/index.ts"`);
-              globs.push(`"${API_SERVICES_RELATIVE_DIR}/definitions/index.ts"`);
-              targetGlobs = globs.join(' ');
+              
+              execSync(`node "${prettierPath}" --write ${targetGlobs}`, { cwd: apiTargetDir, stdio: 'inherit' });
+              console.log("[Generator] Prettier formatting pass complete using:", prettierPath);
           }
-          
-          execSync(`node "${prettierPath}" --write ${targetGlobs}`, { cwd: apiTargetDir, stdio: 'inherit' });
-          console.log("[Generator] Prettier formatting pass complete using:", prettierPath);
       } catch (err) {
           console.error("[Generator] Failed to run Prettier globally:", err.message);
       }
