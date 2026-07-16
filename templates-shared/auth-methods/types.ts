@@ -21,4 +21,7 @@ export interface TokenProvider {
 
   /** Replace custom headers for all future requests */
   setCustomHeaders?: (headers: Record<string, string>) => void;
+
+  /** Remove a specific custom header */
+  removeCustomHeader?: (key: string) => void;
 }

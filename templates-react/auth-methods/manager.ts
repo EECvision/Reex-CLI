@@ -40,6 +40,9 @@ export const proxyTokenProvider: TokenProvider = {
   get setCustomHeaders() {
     return activeTokenProvider.setCustomHeaders;
   },
+  get removeCustomHeader() {
+    return activeTokenProvider.removeCustomHeader;
+  },
 };
 
 export function getActiveProvider(): {
@@ -47,6 +50,7 @@ export function getActiveProvider(): {
   setTokens?: (p: { accessToken: string; refreshToken?: string }) => void;
   clearTokens?: () => void;
   setCustomHeaders?: (headers: Record<string, string>) => void;
+  removeCustomHeader?: (key: string) => void;
 } | null {
   return activeTokenProvider ?? null;
 }

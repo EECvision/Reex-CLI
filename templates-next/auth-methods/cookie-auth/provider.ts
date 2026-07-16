@@ -11,8 +11,9 @@ const COOKIE_FLAG_KEY = "is_cookie_auth_active";
 interface CookieTokenProvider extends TokenProvider {
   setTokens: (params: { accessToken?: string; refreshToken?: string }) => void;
   clearTokens: () => void;
-  setCustomHeaders: (headers: Record<string, string>) => void;
+    setCustomHeaders: (headers: Record<string, string>) => void;
   getCustomHeaders: () => Record<string, string>;
+  removeCustomHeader: (key: string) => void;
 }
 
 /**
@@ -51,6 +52,22 @@ export const cookieTokenProvider: CookieTokenProvider = {
     customHeaders = headers;
     if (typeof window !== "undefined") {
       localStorage.setItem("custom_headers", JSON.stringify(headers));
+    }
+  },
+
+  removeCustomHeader: (key) => {
+    if (customHeaders) {
+      delete customHeaders[key];
+    }
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("custom_headers");
+      if (stored) {
+        try {
+          const headers = JSON.parse(stored);
+          delete headers[key];
+          localStorage.setItem("custom_headers", JSON.stringify(headers));
+        } catch {}
+      }
     }
   },
 
