@@ -10,7 +10,7 @@ const path = require('path');
  * @param {string} targetDir 
  * @param {object} manifest 
  */
-function generateTypes(targetDir, manifest) {
+function generateTypes(targetDir, manifest, changedModules = null) {
   const { API_SERVICES_RELATIVE_DIR } = require('../paths');
   const typesDir = path.join(targetDir, API_SERVICES_RELATIVE_DIR, 'types');
 

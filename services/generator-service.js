@@ -58,7 +58,7 @@ class GeneratorService {
    * 7. Copies Providers (from templates)
    * @param {string} apiTargetDir 
    */
-  async regenerate(apiTargetDir) {
+  async regenerate(apiTargetDir, changedModules = null) {
     const definitionsDir = path.join(apiTargetDir, API_SERVICES_RELATIVE_DIR, 'definitions');
 
     // api-client files
@@ -120,10 +120,10 @@ class GeneratorService {
       const manifest = projectService.generateManifest(definitionsDir);
 
       // 3. Generate Hooks
-      hookService.generateHooks(apiTargetDir, manifest);
+      hookService.generateHooks(apiTargetDir, manifest, changedModules);
 
       // 3b. Generate Types Folder
-      typeService.generateTypes(apiTargetDir, manifest);
+      typeService.generateTypes(apiTargetDir, manifest, changedModules);
 
       // 3c. Sync Clients (Auto-Prune unused clients) - REMOVED (Replaced by static api-client/index.ts)
 
@@ -243,9 +243,21 @@ ${moduleNames.map((name) => `  ...${name}Api,`).join('\n')}
               prettierPath = path.join(path.dirname(require.resolve('prettier/package.json')), 'bin/prettier.cjs');
           }
           
-          const targetGlob = path.posix.join(API_SERVICES_RELATIVE_DIR, '**/*.{ts,tsx}');
+                    let targetGlobs = `"${path.posix.join(API_SERVICES_RELATIVE_DIR, '**/*.{ts,tsx}')}"`;
+          if (changedModules && changedModules.length > 0) {
+              const globs = [];
+              for (const mod of changedModules) {
+                  const pascal = mod.charAt(0).toUpperCase() + mod.slice(1);
+                  globs.push(`"${API_SERVICES_RELATIVE_DIR}/definitions/${mod}.ts"`);
+                  globs.push(`"${API_SERVICES_RELATIVE_DIR}/generated/use${pascal}Queries.ts"`);
+                  globs.push(`"${API_SERVICES_RELATIVE_DIR}/types/${mod}/**/*.ts"`);
+              }
+              globs.push(`"${API_SERVICES_RELATIVE_DIR}/generated/index.ts"`);
+              globs.push(`"${API_SERVICES_RELATIVE_DIR}/definitions/index.ts"`);
+              targetGlobs = globs.join(' ');
+          }
           
-          execSync(`node "${prettierPath}" --write "${targetGlob}"`, { cwd: apiTargetDir, stdio: 'inherit' });
+          execSync(`node "${prettierPath}" --write ${targetGlobs}`, { cwd: apiTargetDir, stdio: 'inherit' });
           console.log("[Generator] Prettier formatting pass complete using:", prettierPath);
       } catch (err) {
           console.error("[Generator] Failed to run Prettier globally:", err.message);

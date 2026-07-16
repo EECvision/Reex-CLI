@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 
 class HookService {
-  generateHooks(targetDir, manifest) {
+  generateHooks(targetDir, manifest, changedModules = null) {
     const { API_SERVICES_RELATIVE_DIR } = require('../paths');
     const generatedDir = path.join(
       targetDir,
@@ -10,10 +10,7 @@ class HookService {
       "generated"
     );
 
-    // Clean generated directory safely
-    if (fs.existsSync(generatedDir)) {
-      fs.rmSync(generatedDir, { recursive: true, force: true });
-    }
+    
     fs.mkdirSync(generatedDir, { recursive: true });
 
     const modules = Object.keys(manifest);
@@ -29,10 +26,39 @@ class HookService {
 
     const exportLines = [];
 
-    // Phase 2: Generate module files
+        // Phase 2: Generate module files
+    const expectedFiles = new Set();
+    expectedFiles.add(path.join(generatedDir, 'index.ts').replace(/\\/g, '/'));
+    
     modules.forEach((moduleName) => {
+      const pascalModule = moduleName.charAt(0).toUpperCase() + moduleName.slice(1);
+      const fileName = `use${pascalModule}Queries.ts`;
+      expectedFiles.add(path.join(generatedDir, fileName).replace(/\\/g, '/'));
+
       const methods = manifest[moduleName];
       const methodNames = Object.keys(methods);
+      const moduleHooks = methodNames.map((m) => this.getHookName(m));
+      const hasConflict = moduleHooks.some((h) => hookFrequency.get(h) > 1);
+
+      // Always push to exportLines for index.ts
+      if (hasConflict) {
+        exportLines.push(
+          `export {\n${moduleHooks
+            .map((h) =>
+              hookFrequency.get(h) > 1
+                ? `  ${h} as ${h.replace("use", `use${pascalModule}`)},`
+                : `  ${h},`
+            )
+            .join("\n")}\n} from "./use${pascalModule}Queries";`
+        );
+      } else {
+        exportLines.push(`export * from "./use${pascalModule}Queries";`);
+      }
+
+      if (changedModules && !changedModules.includes(moduleName)) {
+        return; // Skip actual file generation
+      }
+
       const keyFactoryName = `${moduleName}Keys`;
 
       let usedQuery = false;
@@ -99,32 +125,21 @@ ${hooks.join("\n\n")}
 
       // 2. Add lint disable
       const fileContent = `/* eslint-disable @typescript-eslint/no-explicit-any */\n${rawContent}`;
-
-      const pascalModule =
-        moduleName.charAt(0).toUpperCase() + moduleName.slice(1);
-      const fileName = `use${pascalModule}Queries.ts`;
       fs.writeFileSync(path.join(generatedDir, fileName), fileContent);
-
-      // Index exports
-      const moduleHooks = methodNames.map((m) => this.getHookName(m));
-      const hasConflict = moduleHooks.some((h) => hookFrequency.get(h) > 1);
-
-      if (hasConflict) {
-        exportLines.push(
-          `export {\n${moduleHooks
-            .map((h) =>
-              hookFrequency.get(h) > 1
-                ? `  ${h} as ${h.replace("use", `use${pascalModule}`)},`
-                : `  ${h},`
-            )
-            .join("\n")}\n} from "./use${pascalModule}Queries";`
-        );
-      } else {
-        exportLines.push(`export * from "./use${pascalModule}Queries";`);
-      }
     });
 
     this.generateIndexFile(generatedDir, exportLines);
+
+    // Phase 3: Cleanup Old Files (e.g. from deleted definitions)
+    if (fs.existsSync(generatedDir)) {
+      const entries = fs.readdirSync(generatedDir);
+      for (const entry of entries) {
+        const fullPath = path.join(generatedDir, entry).replace(/\\/g, '/');
+        if (!expectedFiles.has(fullPath)) {
+          fs.unlinkSync(fullPath);
+        }
+      }
+    }
   }
 
   getSafeArgName(name) {

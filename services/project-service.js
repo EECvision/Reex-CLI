@@ -158,7 +158,7 @@ class ProjectService {
      * Prunes unused interfaces, types, and imports from definition files.
      * @param {string} targetDir - The directory containing API definitions.
      */
-    async pruneUnusedDefinitions(targetDir) {
+    async pruneUnusedDefinitions(targetDir, changedModules = null) {
         console.log(`[ProjectService] Starting Prune in: ${targetDir}`);
         if (!fs.existsSync(targetDir)) {
             console.log(`[ProjectService] Target dir does not exist: ${targetDir}`);
@@ -177,6 +177,7 @@ class ProjectService {
             const filePath = path.join(targetDir, file);
             const sourceFile = this.project.addSourceFileAtPath(filePath);
             const moduleName = file.replace(".ts", "");
+            if (changedModules && !changedModules.includes(moduleName)) continue;
 
             // Find the API Object (e.g. const accountReportsApi = { ... })
             // We assume standard naming convention: moduleName + "Api"

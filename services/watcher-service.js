@@ -23,17 +23,16 @@ class WatcherService {
             persistent: true
         });
 
-        let debounceTimer;
+                let debounceTimer;
         let configDebounceTimer;
         let isSyncing = false;
+        let changedFiles = new Set();
 
         watcher.on('all', (event, filePath) => {
-            // Even though we scope the watch, be safe.
             if (filePath.includes('generated') || filePath.endsWith('index.ts')) return;
 
             console.log(`[WATCHER] Change detected: ${event} ${filePath}`);
 
-            // If only the config file changed, skip heavy generation and just notify UI
             if (filePath.endsWith('api.config.ts')) {
                 clearTimeout(configDebounceTimer);
                 configDebounceTimer = setTimeout(() => {
@@ -43,16 +42,34 @@ class WatcherService {
                 return;
             }
 
-            // Immediate Feedback: Notify client that we see changes
             if (!isSyncing) {
                 sseService.broadcast(Date.now().toString(), 'project:sync-start', 'Syncing changes...');
                 isSyncing = true;
             }
 
+            changedFiles.add(filePath);
+
             clearTimeout(debounceTimer);
             debounceTimer = setTimeout(async () => {
+                const filesToProcess = Array.from(changedFiles);
+                changedFiles.clear();
+
+                let changedModules = [];
+                for (const file of filesToProcess) {
+                    if (file.includes('definitions')) {
+                        const basename = path.basename(file, '.ts');
+                        if (basename !== 'index') changedModules.push(basename);
+                    }
+                }
+                
+                if (changedModules.length > 0) {
+                    changedModules = [...new Set(changedModules)];
+                } else {
+                    changedModules = null; // trigger full rebuild if unknown files changed
+                }
+
                 try {
-                    await generatorService.regenerate(apiTargetDir);
+                    await generatorService.regenerate(apiTargetDir, changedModules);
                 } catch (e) {
                     console.error("Regeneration failed:", e);
                 } finally {
