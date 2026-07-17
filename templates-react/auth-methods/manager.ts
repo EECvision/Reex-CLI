@@ -6,7 +6,7 @@ import { localStorageTokenProvider } from "./localstorage-auth/provider";
 
 export type AuthStrategy = "cookie" | "localstorage";
 
-export let activeTokenProvider = localStorageTokenProvider;
+export let activeTokenProvider: TokenProvider = localStorageTokenProvider;
 
 /**
  * Updates the globally active token provider based on the chosen strategy.

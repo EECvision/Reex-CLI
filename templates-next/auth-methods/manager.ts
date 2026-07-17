@@ -5,7 +5,7 @@ import { type TokenProvider } from "./types";
 
 export type AuthStrategy = "cookie" | "next-auth" | "localstorage";
 
-export let activeTokenProvider = localStorageTokenProvider;
+export let activeTokenProvider: TokenProvider = localStorageTokenProvider;
 
 /**
  * Updates the globally active token provider based on the chosen strategy.
