@@ -6,7 +6,7 @@ import { localStorageTokenProvider } from "./localstorage-auth/provider";
 
 export type AuthStrategy = "cookie" | "localstorage";
 
-export let activeTokenProvider: TokenProvider = localStorageTokenProvider;
+let activeTokenProvider: TokenProvider = localStorageTokenProvider;
 
 /**
  * Updates the globally active token provider based on the chosen strategy.
@@ -45,6 +45,11 @@ export const proxyTokenProvider: TokenProvider = {
   },
 };
 
+/**
+ * Use this function to access the active token provider from an external file.
+ * This is the recommended way to get or set auth tokens after login if you are 
+ * not using the useLogin hook.
+ */
 export function getActiveProvider(): {
   getToken?: () => Promise<string | null> | string | null;
   setTokens?: (p: { accessToken: string; refreshToken?: string }) => void;
