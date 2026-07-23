@@ -93,11 +93,20 @@ function generateTypes(targetDir, manifest, changedModules = null) {
           }
         } catch (e) { }
       } else if (fullPath.endsWith('.ts') && !expectedFiles.has(fullPath)) {
-        // Only delete .ts files that are not expected. 
-        // We should preserve .mock.json or other files if they were manually added?
-        // The original script deleted them.
-        fs.unlinkSync(fullPath);
-        // console.log(`[TYPES] Deleted obsolete: ${fullPath}`);
+        const recoveredDir = path.join(targetDir, API_SERVICES_RELATIVE_DIR, '_recovered', 'types');
+        const relativePath = path.relative(typesDir, fullPath);
+        const recoverPath = path.join(recoveredDir, relativePath);
+
+        if (!fs.existsSync(path.dirname(recoverPath))) {
+          fs.mkdirSync(path.dirname(recoverPath), { recursive: true });
+        }
+
+        try {
+          fs.renameSync(fullPath, recoverPath);
+          console.warn(`\x1b[33m[WARNING] Unauthorized/obsolete file detected in types: ${relativePath.replace(/\\/g, '/')}. Moved to _recovered folder.\x1b[0m`);
+        } catch (e) {
+          console.error(`[Generator] Failed to quarantine types file ${entry}:`, e.message);
+        }
       }
     }
   };

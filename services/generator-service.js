@@ -9,6 +9,51 @@ const sseService = require('./sse-service');
 
 class GeneratorService {
 
+  sanitizeDirectory(targetDir, templateDirs, recoveredDir, basePath = '') {
+    if (!fs.existsSync(targetDir)) return;
+    
+    // Build set of allowed files for the current basePath
+    const allowedFiles = new Set();
+    templateDirs.forEach(dir => {
+      const currentTemplateDir = path.join(dir, basePath);
+      if (fs.existsSync(currentTemplateDir)) {
+        fs.readdirSync(currentTemplateDir).forEach(file => allowedFiles.add(file));
+      }
+    });
+
+    // Scan targetDir for foreign files/folders
+    const currentTargetDir = path.join(targetDir, basePath);
+    if (!fs.existsSync(currentTargetDir)) return;
+
+    fs.readdirSync(currentTargetDir).forEach(file => {
+      const fullPath = path.join(currentTargetDir, file);
+      const isAllowed = allowedFiles.has(file);
+      
+      if (!isAllowed) {
+        const relativeToRoot = path.join(path.basename(targetDir), basePath, file);
+        const recoverPath = path.join(recoveredDir, relativeToRoot);
+        
+        if (!fs.existsSync(path.dirname(recoverPath))) {
+          fs.mkdirSync(path.dirname(recoverPath), { recursive: true });
+        }
+        
+        try {
+          fs.renameSync(fullPath, recoverPath);
+          const rootCategory = path.basename(targetDir);
+          const displayPath = path.join(basePath, file).replace(/\\/g, '/');
+          console.warn(`\x1b[33m[WARNING] Unauthorized file/folder detected in ${rootCategory}: ${displayPath}. Moved to _recovered folder.\x1b[0m`);
+        } catch (e) {
+          console.error(`[Generator] Failed to quarantine ${file}:`, e.message);
+        }
+      } else {
+        if (fs.statSync(fullPath).isDirectory()) {
+          this.sanitizeDirectory(targetDir, templateDirs, recoveredDir, path.join(basePath, file));
+        }
+      }
+    });
+  }
+
+
   copyRecursiveSync(src, dest, overwrite = false) {
     if (fs.existsSync(src)) {
       if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
@@ -112,7 +157,17 @@ class GeneratorService {
         console.log("[Generator] Scaffolded core.ts from template");
       }
 
-
+      // 4. Custom folder - Scaffold Once
+      const customDir = path.join(apiTargetDir, API_SERVICES_RELATIVE_DIR, 'custom');
+      if (!fs.existsSync(customDir)) {
+        fs.mkdirSync(customDir, { recursive: true });
+        const customIndexPath = path.join(customDir, 'index.ts');
+        fs.writeFileSync(
+          customIndexPath,
+          "// You are free to add custom codes, types, or utilities here.\n// Files in this directory will not be deleted or overwritten by the generator.\n"
+        );
+        console.log("[Generator] Scaffolded custom directory");
+      }
       // 2. Generate Manifest
       // Prune definition files first (remove unused interfaces/imports)
       await projectService.pruneUnusedDefinitions(definitionsDir);
@@ -148,12 +203,14 @@ ${moduleNames.map((name) => `  ...${name}Api,`).join('\n')}
         fs.mkdirSync(providersDir, { recursive: true });
       }
 
+      const recoveredDir = path.join(apiTargetDir, API_SERVICES_RELATIVE_DIR, '_recovered');
       const sharedProvidersDir = path.join(sharedTemplateDir, 'providers');
       const templateProvidersDir = path.join(templateBaseDir, 'providers');
       
       if (!fs.existsSync(sharedProvidersDir) && !fs.existsSync(templateProvidersDir)) {
         console.warn(`[Generator] Warning: templates/providers directory not found in shared or ${framework}`);
       } else {
+        this.sanitizeDirectory(providersDir, [sharedProvidersDir, templateProvidersDir], recoveredDir);
         if (fs.existsSync(sharedProvidersDir)) this.copyRecursiveSync(sharedProvidersDir, providersDir, false);
         if (fs.existsSync(templateProvidersDir)) this.copyRecursiveSync(templateProvidersDir, providersDir, false);
         console.log("[Generator] Scaffolded providers from templates (if missing)");
@@ -171,6 +228,7 @@ ${moduleNames.map((name) => `  ...${name}Api,`).join('\n')}
       if (!fs.existsSync(sharedHooksDir) && !fs.existsSync(templateHooksDir)) {
         console.warn(`[Generator] Warning: templates/hooks directory not found in shared or ${framework}`);
       } else {
+        this.sanitizeDirectory(hooksDir, [sharedHooksDir, templateHooksDir], recoveredDir);
         if (fs.existsSync(sharedHooksDir)) this.copyRecursiveSync(sharedHooksDir, hooksDir, false);
         if (fs.existsSync(templateHooksDir)) this.copyRecursiveSync(templateHooksDir, hooksDir, false);
         console.log("[Generator] Scaffolded hooks from templates (if missing)");
@@ -188,6 +246,7 @@ ${moduleNames.map((name) => `  ...${name}Api,`).join('\n')}
       if (!fs.existsSync(sharedAuthDir) && !fs.existsSync(templateAuthDir)) {
         console.warn(`[Generator] Warning: templates/auth-methods directory not found in shared or ${framework}`);
       } else {
+        this.sanitizeDirectory(authDir, [sharedAuthDir, templateAuthDir], recoveredDir);
         if (fs.existsSync(sharedAuthDir)) this.copyRecursiveSync(sharedAuthDir, authDir, false);
         if (fs.existsSync(templateAuthDir)) this.copyRecursiveSync(templateAuthDir, authDir, false);
         console.log("[Generator] Scaffolded auth-methods from templates (if missing)");
@@ -284,6 +343,29 @@ ${moduleNames.map((name) => `  ...${name}Api,`).join('\n')}
           }
       } catch (err) {
           console.error("[Generator] Failed to run Prettier globally:", err.message);
+      }
+
+      // Sanitize root of api-services to protect directory structure
+      const apiServicesRoot = path.join(apiTargetDir, API_SERVICES_RELATIVE_DIR);
+      if (fs.existsSync(apiServicesRoot)) {
+        const allowedRootEntities = new Set([
+          'definitions', 'generated', 'types', 'providers', 'hooks', 'auth-methods', 'custom', '_recovered', 'core.ts', 'api.config.ts', 'index.ts', '.reex'
+        ]);
+        fs.readdirSync(apiServicesRoot).forEach(entry => {
+          if (!allowedRootEntities.has(entry)) {
+            const fullPath = path.join(apiServicesRoot, entry);
+            const recoverPath = path.join(recoveredDir, 'root', entry);
+            if (!fs.existsSync(path.dirname(recoverPath))) {
+              fs.mkdirSync(path.dirname(recoverPath), { recursive: true });
+            }
+            try {
+              fs.renameSync(fullPath, recoverPath);
+              console.warn(`\x1b[33m[WARNING] Unauthorized file/folder detected in api-services root: ${entry}. Moved to _recovered/root.\x1b[0m`);
+            } catch(e) {
+              console.error(`[Generator] Failed to quarantine root entity ${entry}:`, e.message);
+            }
+          }
+        });
       }
 
       sseService.broadcast(Date.now().toString(), 'project:updated', 'Project generated');
