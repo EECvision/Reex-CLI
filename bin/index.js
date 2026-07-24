@@ -33,7 +33,7 @@ const findAvailablePort = (startingPort) => {
 program
   .name("reex")
   .description("Reex API Builder - Generate REST API, TypeScript types and React Query hooks from OpenAPI specs directly into your project")
-  .version(pkg.version);
+  .version(pkg.version, '-v, -V, --version, --Version');
 
 program
   .command("start")
@@ -62,6 +62,27 @@ program
       process.env.PORT = finalPort;
       process.env.CORS_ORIGIN =
         "https://reex-api-builder.toolshq.app,http://localhost:5173,http://localhost:3000,http://localhost:4000";
+
+      const fs = require('fs');
+      const apiServicesDir = fs.existsSync(path.join(targetDir, "src"))
+        ? path.join(targetDir, "src", "api-services")
+        : path.join(targetDir, "api-services");
+      
+      const reexDir = path.join(apiServicesDir, ".reex");
+      if (!fs.existsSync(reexDir)) {
+        fs.mkdirSync(reexDir, { recursive: true });
+      }
+      const metadataFile = path.join(reexDir, "metadata.json");
+      let metadata = {};
+      if (fs.existsSync(metadataFile)) {
+        try {
+          metadata = JSON.parse(fs.readFileSync(metadataFile, 'utf8'));
+        } catch (e) {}
+      }
+      
+      // Update metadata with the new port while preserving existing data
+      metadata.port = finalPort;
+      fs.writeFileSync(metadataFile, JSON.stringify(metadata, null, 2));
 
       // Start the Server with the guaranteed open port
       startServer(finalPort);
@@ -127,6 +148,167 @@ program
   });
 
 
+
+const fs = require("fs");
+const http = require("http");
+
+async function checkIfServerRunning(targetDir) {
+  const apiServicesDir = fs.existsSync(path.join(targetDir, "src")) 
+    ? path.join(targetDir, "src", "api-services") 
+    : path.join(targetDir, "api-services");
+  
+  const metadataFile = path.join(apiServicesDir, ".reex", "metadata.json");
+  if (!fs.existsSync(metadataFile)) return false;
+
+  let metadata = {};
+  try {
+    metadata = JSON.parse(fs.readFileSync(metadataFile, "utf-8"));
+  } catch (e) {
+    return false;
+  }
+
+  const port = parseInt(metadata.port, 10);
+  if (isNaN(port)) return false;
+
+  try {
+    const data = await new Promise((resolve, reject) => {
+      const req = http.get(`http://localhost:${port}/api/health`, (res) => {
+        let body = '';
+        res.on('data', chunk => body += chunk);
+        res.on('end', () => resolve(body));
+      });
+      req.on('error', reject);
+      req.setTimeout(300, () => reject(new Error('timeout')));
+    });
+    const json = JSON.parse(data);
+    const normalize = (p) => p.replace(/\\/g, '/').toLowerCase();
+    if (normalize(json.targetDir) === normalize(targetDir) || normalize(json.cwd) === normalize(targetDir)) {
+      return true;
+    }
+  } catch (e) {
+    // Stale port file, server crashed. Clean it up without destroying other metadata.
+    try {
+      delete metadata.port;
+      fs.writeFileSync(metadataFile, JSON.stringify(metadata, null, 2));
+    } catch (err) {}
+    return false;
+  }
+  return false;
+}
+
+const addCmd = program
+  .command("add")
+  .description("Add a new resource");
+
+const removeCmd = program
+  .command("remove")
+  .description("Remove a resource");
+
+addCmd
+  .command("module <name>")
+  .description("Scaffold a new empty API module")
+  .option("-d, --dir <path>", "Directory to manage (defaults to CWD)", process.cwd())
+  .action(async (name, options) => {
+    const targetDir = path.resolve(options.dir);
+    const apiServicesDir = fs.existsSync(path.join(targetDir, "src")) 
+      ? path.join(targetDir, "src", "api-services") 
+      : path.join(targetDir, "api-services");
+    
+    const actualDefsDir = path.join(apiServicesDir, "definitions");
+
+    if (!fs.existsSync(actualDefsDir)) {
+      console.error(`\n❌ Error: api-services/definitions directory not found. Have you run 'reex start' yet?`);
+      process.exit(1);
+    }
+
+    const templatePath = path.join(__dirname, "..", "templates-shared", "module.template.ts");
+    const targetPath = path.join(actualDefsDir, `${name}.ts`);
+
+    if (fs.existsSync(targetPath)) {
+      console.error(`\n❌ Error: Module '${name}' already exists at ${targetPath}`);
+      process.exit(1);
+    }
+
+    const typeName = name.charAt(0).toUpperCase() + name.slice(1);
+    let template = fs.readFileSync(templatePath, "utf-8");
+    
+    template = template
+      .replace(/__ModuleName__/g, name)
+      .replace(/__TypeName__/g, typeName)
+      .replace(/__ModuleNameSingular__/g, name.endsWith('s') ? name.slice(0, -1) : name);
+
+    fs.writeFileSync(targetPath, template);
+    console.log(`\n✅ Created new module '${name}'`);
+    
+    if (await checkIfServerRunning(targetDir)) {
+      console.log(`\n⏳ Detected 'reex start' is running. Generation delegated to watcher.`);
+    } else {
+      await generatorService.regenerate(targetDir);
+    }
+  });
+
+removeCmd
+  .command("module <name>")
+  .description("Remove an API module and purge its hooks")
+  .option("-d, --dir <path>", "Directory to manage (defaults to CWD)", process.cwd())
+  .action(async (name, options) => {
+    const targetDir = path.resolve(options.dir);
+    const apiServicesDir = fs.existsSync(path.join(targetDir, "src")) 
+      ? path.join(targetDir, "src", "api-services") 
+      : path.join(targetDir, "api-services");
+      
+    const targetPath = path.join(apiServicesDir, "definitions", `${name}.ts`);
+
+    if (!fs.existsSync(targetPath)) {
+      console.error(`\n❌ Error: Module '${name}' not found at ${targetPath}`);
+      process.exit(1);
+    }
+
+    fs.unlinkSync(targetPath);
+    console.log(`\n✅ Deleted module '${name}'`);
+    
+    if (await checkIfServerRunning(targetDir)) {
+      console.log(`\n⏳ Detected 'reex start' is running. Generation delegated to watcher.`);
+    } else {
+      await generatorService.regenerate(targetDir);
+    }
+  });
+
+program
+  .command("sync")
+  .alias("update")
+  .description("Manually synchronize and regenerate hooks and types from definitions")
+  .option("-d, --dir <path>", "Directory to manage (defaults to CWD)", process.cwd())
+  .action(async (options) => {
+    const targetDir = path.resolve(options.dir);
+    console.log(`\n🔄 Synchronizing Reex modules...`);
+    
+    const isRunning = await checkIfServerRunning(targetDir);
+    if (isRunning) {
+      console.log(`\n⏳ Detected 'reex start' is running. Sending sync request to server...`);
+      const apiServicesDir = fs.existsSync(path.join(targetDir, "src")) ? path.join(targetDir, "src", "api-services") : path.join(targetDir, "api-services");
+      const metadataFile = path.join(apiServicesDir, ".reex", "metadata.json");
+      const metadata = JSON.parse(fs.readFileSync(metadataFile, "utf-8"));
+      
+      const req = http.request({
+        hostname: 'localhost',
+        port: metadata.port,
+        path: '/api/debug/regenerate',
+        method: 'POST'
+      }, (res) => {
+        if (res.statusCode === 200) {
+          console.log(`\n✅ Synchronization complete.`);
+        } else {
+          console.log(`\n❌ Synchronization failed with status: ${res.statusCode}`);
+        }
+      });
+      req.on('error', (e) => console.error(`\n❌ Synchronization failed: ${e.message}`));
+      req.end();
+    } else {
+      await generatorService.regenerate(targetDir);
+      console.log(`\n✅ Synchronization complete.`);
+    }
+  });
 
 // Graceful Shutdown
 process.on("SIGINT", () => {

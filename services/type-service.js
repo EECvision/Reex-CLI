@@ -93,19 +93,12 @@ function generateTypes(targetDir, manifest, changedModules = null) {
           }
         } catch (e) { }
       } else if (fullPath.endsWith('.ts') && !expectedFiles.has(fullPath)) {
-        const recoveredDir = path.join(targetDir, API_SERVICES_RELATIVE_DIR, '_recovered', 'types');
-        const relativePath = path.relative(typesDir, fullPath);
-        const recoverPath = path.join(recoveredDir, relativePath);
-
-        if (!fs.existsSync(path.dirname(recoverPath))) {
-          fs.mkdirSync(path.dirname(recoverPath), { recursive: true });
-        }
-
         try {
-          fs.renameSync(fullPath, recoverPath);
-          console.warn(`\x1b[33m[WARNING] Unauthorized/obsolete file detected in types: ${relativePath.replace(/\\/g, '/')}. Moved to _recovered folder.\x1b[0m`);
+          fs.unlinkSync(fullPath);
+          const relativePath = path.relative(typesDir, fullPath);
+          console.log(`[Generator] Cleaned up obsolete type file: ${relativePath.replace(/\\/g, '/')}`);
         } catch (e) {
-          console.error(`[Generator] Failed to quarantine types file ${entry}:`, e.message);
+          console.error(`[Generator] Failed to clean up types file ${entry}:`, e.message);
         }
       }
     }

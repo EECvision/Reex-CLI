@@ -136,18 +136,11 @@ ${hooks.join("\n\n")}
       for (const entry of entries) {
         const fullPath = path.join(generatedDir, entry).replace(/\\/g, '/');
         if (!expectedFiles.has(fullPath)) {
-          const recoveredDir = path.join(targetDir, API_SERVICES_RELATIVE_DIR, '_recovered', 'generated');
-          const recoverPath = path.join(recoveredDir, entry);
-
-          if (!fs.existsSync(path.dirname(recoverPath))) {
-            fs.mkdirSync(path.dirname(recoverPath), { recursive: true });
-          }
-
           try {
-            fs.renameSync(fullPath, recoverPath);
-            console.warn(`\x1b[33m[WARNING] Unauthorized/obsolete file detected in generated: ${entry}. Moved to _recovered folder.\x1b[0m`);
+            fs.unlinkSync(fullPath);
+            console.log(`[Generator] Cleaned up obsolete generated file: ${entry}`);
           } catch (e) {
-            console.error(`[Generator] Failed to quarantine generated file ${entry}:`, e.message);
+            console.error(`[Generator] Failed to clean up generated file ${entry}:`, e.message);
           }
         }
       }
