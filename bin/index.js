@@ -4,7 +4,10 @@ const path = require("path");
 const net = require("net");
 const { program } = require("commander");
 const open = require("open");
+const readline = require("readline");
 const { startServer } = require("../server");
+const pkg = require("../package.json");
+const generatorService = require("../services/generator-service");
 
 // Helper function to find an open port
 const findAvailablePort = (startingPort) => {
@@ -28,9 +31,13 @@ const findAvailablePort = (startingPort) => {
 };
 
 program
-  .name("reex-build")
+  .name("reex")
   .description("Reex API Builder - Generate REST API, TypeScript types and React Query hooks from OpenAPI specs directly into your project")
-  .version("1.0.0")
+  .version(pkg.version);
+
+program
+  .command("start")
+  .description("Start the Reex API builder server")
   .option("-p, --port <number>", "Port to run the local server on", "4000")
   .option("-d, --dir <path>", "Directory to manage (defaults to CWD)", process.cwd())
   .option("--no-open", "Do not automatically open the browser")
@@ -77,6 +84,49 @@ program
       process.exit(1);
     }
   });
+
+program
+  .command("reset [target]")
+  .description("Reset scaffolded files or folders to their default templates")
+  .option("-d, --dir <path>", "Directory to manage (defaults to CWD)", process.cwd())
+  .option("-y, --yes", "Skip confirmation prompt")
+  .action(async (target, options) => {
+    const targetDir = path.resolve(options.dir);
+    
+    let message = target 
+      ? `Are you sure you want to reset "${target}"? This will overwrite your custom changes.`
+      : `Are you sure you want to reset ALL scaffolded files? This will overwrite your custom changes.`;
+
+    if (!options.yes) {
+      const rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout
+      });
+
+      const answer = await new Promise(resolve => {
+        rl.question(`\n⚠️  ${message} (Y/n): `, resolve);
+      });
+
+      rl.close();
+
+      const normalizedAnswer = answer.trim().toLowerCase();
+      if (normalizedAnswer !== '' && normalizedAnswer !== 'y' && normalizedAnswer !== 'yes') {
+        console.log("Reset cancelled.");
+        process.exit(0);
+      }
+    }
+
+    try {
+      console.log(`\n🔄 Resetting ${target || 'all scaffolded files'}...`);
+      generatorService.resetScaffold(targetDir, target);
+      console.log("✅ Reset complete.");
+    } catch (err) {
+      console.error("❌ Reset failed:", err.message);
+      process.exit(1);
+    }
+  });
+
+
 
 // Graceful Shutdown
 process.on("SIGINT", () => {

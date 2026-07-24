@@ -1,11 +1,10 @@
 {
-    "name": "reex-api-builder",
+    "name": "reex-cli",
     "version": "2.3.1",
     "description": "CLI tool for Reex API Builder - Generate TypeScript types and React Query hooks from OpenAPI specs",
     "main": "server.js",
     "bin": {
-        "reex-build": "./bin/index.js",
-        "reex-reset": "./bin/reset.js"
+        "reex": "./bin/index.js"
     },
     "scripts": {
         "start": "node bin/index.js",

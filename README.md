@@ -18,15 +18,21 @@ If you are a frontend developer and want to instantly transform your API collect
 
 **Step A: Install the CLI Globally**
 ```bash
-npm install -g reex-api-builder
+npm install -g reex-cli
 ```
 
 **Step B: Initialize Your Project**
 Navigate to the root directory of your React or Next.js project and run:
 ```bash
-reex-build
+reex start
 ```
 *Once initialized, the CLI will sync your local project files with the Reex UI, allowing you to seamlessly push generated code straight into your codebase.*
+
+**Step C: Resetting (Optional)**
+If you ever want to reset your generated files back to their default templates, simply run:
+```bash
+reex reset
+```
 
 ---
 
