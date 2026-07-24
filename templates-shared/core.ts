@@ -284,3 +284,10 @@ export const createApiClient = (
  * It dynamically uses the Active Strategy defined in the AuthProvider.
  */
 export const apiClient = createApiClient(proxyTokenProvider);
+
+/** 
+ * Enforces the basic structure of Reex definition files.
+ * Use with the `satisfies` operator for maximum IntelliSense:
+ * export const myApi = { ... } satisfies ReexDefinition;
+ */
+export type ReexDefinition = Record<string, (...args: any[]) => Promise<any>>;

@@ -43,7 +43,19 @@ class ProjectService {
                 for (const declaration of declarations) {
                     const kind = declaration.getKind();
                     if (kind === SyntaxKind.VariableDeclaration) {
-                        const initializer = declaration.getInitializer();
+                        let initializer = declaration.getInitializer();
+                        
+                        // Unwrap AsExpression, SatisfiesExpression, TypeAssertion, ParenthesizedExpression
+                        while (
+                            initializer && 
+                            (initializer.getKind() === SyntaxKind.AsExpression ||
+                             initializer.getKind() === SyntaxKind.TypeAssertion ||
+                             initializer.getKind() === SyntaxKind.SatisfiesExpression ||
+                             initializer.getKind() === SyntaxKind.ParenthesizedExpression)
+                        ) {
+                            initializer = initializer.getExpression();
+                        }
+
                         if (initializer && initializer.getKind() === SyntaxKind.ObjectLiteralExpression) {
                             const properties = initializer.getProperties();
                             for (const property of properties) {

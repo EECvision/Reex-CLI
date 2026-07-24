@@ -184,12 +184,12 @@ class GeneratorService {
 
       // 4. Regenerate Barrel File (API_SERVICES_RELATIVE_DIR/definitions/index.ts)
       const moduleNames = Object.keys(manifest).sort();
-      const barrelContent = `
+      const barrelContent = `import { type ReexDefinition } from "../core";
 ${moduleNames.map((name) => `import { ${name}Api } from "./${name}";`).join('\n')}
 
 export const api = {
 ${moduleNames.map((name) => `  ...${name}Api,`).join('\n')}
-};
+} satisfies ReexDefinition;
 `;
       if (!fs.existsSync(definitionsDir)) {
         fs.mkdirSync(definitionsDir, { recursive: true });
