@@ -204,6 +204,31 @@ const removeCmd = program
   .command("remove")
   .description("Remove a resource");
 
+const listCmd = program
+  .command("list")
+  .description("List available resources");
+
+listCmd
+  .command("hooks")
+  .description("List all available utility hooks in the Reex repository")
+  .action(() => {
+    const sharedHooksDir = path.join(__dirname, "..", "templates-shared", "hooks");
+    if (!fs.existsSync(sharedHooksDir)) {
+      console.error(`\n❌ Error: Reex repository hooks not found.`);
+      process.exit(1);
+    }
+
+    const hooks = fs.readdirSync(sharedHooksDir).filter(f => f.endsWith('.ts'));
+    
+    console.log(`\n📦 Available Hooks in Reex Repository:\n`);
+    hooks.forEach(hook => {
+       const hookName = hook.replace('.ts', '');
+       const isCore = hookName === 'useAuth' || hookName === 'useNotification';
+       console.log(`  - ${hookName} ${isCore ? '(Core)' : ''}`);
+    });
+    console.log(`\n💡 Install using: reex add hook <name>`);
+  });
+
 addCmd
   .command("module <name>")
   .description("Scaffold a new empty API module")
@@ -247,6 +272,41 @@ addCmd
     }
   });
 
+addCmd
+  .command("hook <name>")
+  .description("Add a utility hook from the Reex repository")
+  .option("-d, --dir <path>", "Directory to manage (defaults to CWD)", process.cwd())
+  .action(async (name, options) => {
+    const targetDir = path.resolve(options.dir);
+    const apiServicesDir = fs.existsSync(path.join(targetDir, "src")) 
+      ? path.join(targetDir, "src", "api-services") 
+      : path.join(targetDir, "api-services");
+    
+    const hooksDir = path.join(apiServicesDir, "hooks");
+    if (!fs.existsSync(hooksDir)) {
+      console.error(`\n❌ Error: api-services/hooks directory not found. Have you run 'reex start' yet?`);
+      process.exit(1);
+    }
+
+    let hookFilename = name.endsWith('.ts') ? name : `${name}.ts`;
+    let pureName = hookFilename.replace('.ts', '');
+    const sharedHookPath = path.join(__dirname, "..", "templates-shared", "hooks", hookFilename);
+    
+    if (!fs.existsSync(sharedHookPath)) {
+      console.error(`\n❌ Error: Hook '${pureName}' not found in Reex repository.`);
+      process.exit(1);
+    }
+
+    const targetPath = path.join(hooksDir, hookFilename);
+    if (fs.existsSync(targetPath)) {
+      console.error(`\n❌ Error: Hook '${pureName}' is already installed.`);
+      process.exit(1);
+    }
+
+    fs.copyFileSync(sharedHookPath, targetPath);
+    console.log(`\n✅ Installed hook '${pureName}'`);
+  });
+
 removeCmd
   .command("module <name>")
   .description("Remove an API module and purge its hooks")
@@ -272,6 +332,34 @@ removeCmd
     } else {
       await generatorService.regenerate(targetDir);
     }
+  });
+
+removeCmd
+  .command("hook <name>")
+  .description("Remove an installed utility hook")
+  .option("-d, --dir <path>", "Directory to manage (defaults to CWD)", process.cwd())
+  .action(async (name, options) => {
+    let pureName = name.replace('.ts', '');
+    if (pureName === 'useAuth' || pureName === 'useNotification') {
+      console.error(`\n❌ Error: '${pureName}' is a core hook and cannot be removed.`);
+      process.exit(1);
+    }
+
+    const targetDir = path.resolve(options.dir);
+    const apiServicesDir = fs.existsSync(path.join(targetDir, "src")) 
+      ? path.join(targetDir, "src", "api-services") 
+      : path.join(targetDir, "api-services");
+    
+    let hookFilename = pureName + '.ts';
+    const targetPath = path.join(apiServicesDir, "hooks", hookFilename);
+
+    if (!fs.existsSync(targetPath)) {
+      console.error(`\n❌ Error: Hook '${pureName}' is not installed.`);
+      process.exit(1);
+    }
+
+    fs.unlinkSync(targetPath);
+    console.log(`\n✅ Removed hook '${pureName}'`);
   });
 
 program

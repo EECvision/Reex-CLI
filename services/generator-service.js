@@ -228,10 +228,21 @@ ${moduleNames.map((name) => `  ...${name}Api,`).join('\n')}
       if (!fs.existsSync(sharedHooksDir) && !fs.existsSync(templateHooksDir)) {
         console.warn(`[Generator] Warning: templates/hooks directory not found in shared or ${framework}`);
       } else {
-        this.sanitizeDirectory(hooksDir, [sharedHooksDir, templateHooksDir], recoveredDir);
-        if (fs.existsSync(sharedHooksDir)) this.copyRecursiveSync(sharedHooksDir, hooksDir, false);
-        if (fs.existsSync(templateHooksDir)) this.copyRecursiveSync(templateHooksDir, hooksDir, false);
-        console.log("[Generator] Scaffolded hooks from templates (if missing)");
+        // We no longer sanitize the hooks directory to avoid wiping hooks added via `reex add hook`
+        const essentialHooks = ['useAuth.ts', 'useNotification.ts'];
+        essentialHooks.forEach(hookFile => {
+          const targetPath = path.join(hooksDir, hookFile);
+          if (!fs.existsSync(targetPath)) {
+            const sharedPath = path.join(sharedHooksDir, hookFile);
+            const templatePath = path.join(templateHooksDir, hookFile);
+            if (fs.existsSync(sharedPath)) {
+              fs.copyFileSync(sharedPath, targetPath);
+            } else if (fs.existsSync(templatePath)) {
+              fs.copyFileSync(templatePath, targetPath);
+            }
+          }
+        });
+        console.log("[Generator] Scaffolded essential hooks from templates");
       }
 
       // 7c. Auth (Copy from templates)
@@ -440,8 +451,10 @@ ${moduleNames.map((name) => `  ...${name}Api,`).join('\n')}
         fs.readdirSync(dir).forEach(file => {
           const fullPath = path.join(dir, file);
           const relativePath = path.join(currentPath, file).replace(/\\/g, '/');
-          
-          if (relativePath === query || relativePath.endsWith('/' + query) || file === query) {
+          const withoutExt = (str) => str.replace(/\.[^/.]+$/, "");
+          if (relativePath === query || withoutExt(relativePath) === query || 
+              relativePath.endsWith('/' + query) || withoutExt(relativePath).endsWith('/' + query) || 
+              file === query || withoutExt(file) === query) {
             matches.push({
                sourcePath: fullPath,
                relativePath: relativePath,
