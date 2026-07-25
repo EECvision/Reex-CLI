@@ -2,6 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const { Project, SyntaxKind } = require("ts-morph");
 const dotenv = require("dotenv");
+const { getInitializerObject } = require("../utils/ast");
 
 class ProjectService {
     constructor() {
@@ -43,20 +44,9 @@ class ProjectService {
                 for (const declaration of declarations) {
                     const kind = declaration.getKind();
                     if (kind === SyntaxKind.VariableDeclaration) {
-                        let initializer = declaration.getInitializer();
-                        
-                        // Unwrap AsExpression, SatisfiesExpression, TypeAssertion, ParenthesizedExpression
-                        while (
-                            initializer && 
-                            (initializer.getKind() === SyntaxKind.AsExpression ||
-                             initializer.getKind() === SyntaxKind.TypeAssertion ||
-                             initializer.getKind() === SyntaxKind.SatisfiesExpression ||
-                             initializer.getKind() === SyntaxKind.ParenthesizedExpression)
-                        ) {
-                            initializer = initializer.getExpression();
-                        }
+                        const initializer = getInitializerObject(declaration);
 
-                        if (initializer && initializer.getKind() === SyntaxKind.ObjectLiteralExpression) {
+                        if (initializer) {
                             const properties = initializer.getProperties();
                             for (const property of properties) {
                                 if (property.getKind() === SyntaxKind.PropertyAssignment) {
@@ -400,20 +390,9 @@ class ProjectService {
             const apiConfigDecl = sourceFile.getVariableDeclaration("apiConfig");
             
             if (apiConfigDecl) {
-                let initializer = apiConfigDecl.getInitializer();
-                
-                // Unwrap AsExpression or SatisfiesExpression on the object literal
-                while (
-                    initializer && 
-                    (initializer.getKind() === SyntaxKind.AsExpression ||
-                     initializer.getKind() === SyntaxKind.TypeAssertion ||
-                     initializer.getKind() === SyntaxKind.SatisfiesExpression ||
-                     initializer.getKind() === SyntaxKind.ParenthesizedExpression)
-                ) {
-                    initializer = initializer.getExpression();
-                }
+                const initializer = getInitializerObject(apiConfigDecl);
 
-                if (initializer && initializer.getKind() === SyntaxKind.ObjectLiteralExpression) {
+                if (initializer) {
                     const prop = initializer.getProperty("baseURL");
                     if (prop) {
                         let valNode = null;
