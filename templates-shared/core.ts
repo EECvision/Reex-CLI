@@ -79,6 +79,8 @@ export const createApiClient = (
   // Request interceptor: inject token + custom headers
   client.interceptors.request.use(
     async (config: InternalAxiosRequestConfig) => {
+      config.baseURL = apiConfig.baseURL;
+
       if (config.data instanceof FormData && config.headers) {
         delete config.headers["Content-Type"];
       }

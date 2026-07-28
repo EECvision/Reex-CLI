@@ -228,7 +228,7 @@ ${moduleNames.map((name) => `  ...${name}Api,`).join('\n')}
       if (!fs.existsSync(sharedHooksDir) && !fs.existsSync(templateHooksDir)) {
         console.warn(`[Generator] Warning: templates/hooks directory not found in shared or ${framework}`);
       } else {
-        // We no longer sanitize the hooks directory to avoid wiping hooks added via `reex add hook`
+        this.sanitizeDirectory(hooksDir, [sharedHooksDir, templateHooksDir], recoveredDir);
         const essentialHooks = ['useAuthState.ts', 'useNotification.ts', 'useClearSession.ts'];
         essentialHooks.forEach(hookFile => {
           const targetPath = path.join(hooksDir, hookFile);

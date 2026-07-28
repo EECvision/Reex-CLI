@@ -288,16 +288,26 @@ addCmd
       process.exit(1);
     }
 
-    let hookFilename = name.endsWith('.ts') ? name : `${name}.ts`;
-    let pureName = hookFilename.replace('.ts', '');
-    const sharedHookPath = path.join(__dirname, "..", "templates-shared", "hooks", hookFilename);
+    let providedHookName = name.endsWith('.ts') ? name : `${name}.ts`;
+    const sharedHooksDir = path.join(__dirname, "..", "templates-shared", "hooks");
     
-    if (!fs.existsSync(sharedHookPath)) {
-      console.error(`\n❌ Error: Hook '${pureName}' not found in Reex repository.`);
+    if (!fs.existsSync(sharedHooksDir)) {
+      console.error(`\n❌ Error: Reex repository hooks not found.`);
       process.exit(1);
     }
 
-    const targetPath = path.join(hooksDir, hookFilename);
+    const availableHooks = fs.readdirSync(sharedHooksDir);
+    const actualHookFilename = availableHooks.find(f => f.toLowerCase() === providedHookName.toLowerCase());
+
+    if (!actualHookFilename) {
+      console.error(`\n❌ Error: Hook '${name.replace('.ts', '')}' not found in Reex repository.`);
+      process.exit(1);
+    }
+
+    let pureName = actualHookFilename.replace('.ts', '');
+    const sharedHookPath = path.join(sharedHooksDir, actualHookFilename);
+    
+    const targetPath = path.join(hooksDir, actualHookFilename);
     if (fs.existsSync(targetPath)) {
       console.error(`\n❌ Error: Hook '${pureName}' is already installed.`);
       process.exit(1);

@@ -11,29 +11,34 @@ class WatcherService {
      * @returns {Object} chokidar watcher instance
      */
     start(apiTargetDir) {
-        const definitionsDir = path.join(apiTargetDir, API_SERVICES_RELATIVE_DIR, 'definitions');
-        const constantsPath = path.join(apiTargetDir, API_SERVICES_RELATIVE_DIR, 'api.config.ts');
+        const apiServicesDir = path.join(apiTargetDir, API_SERVICES_RELATIVE_DIR);
+        const definitionsDir = path.join(apiServicesDir, 'definitions');
+        const constantsPath = path.join(apiServicesDir, 'api.config.ts');
 
         console.log(`[WATCHER] Monitoring:\n - ${definitionsDir}\n - ${constantsPath}`);
 
-        // Watch ONLY the source inputs. 
-        // We do NOT watch generated files (clients.ts, core.ts, types, hooks, index.ts).
-        const watcher = chokidar.watch([definitionsDir, constantsPath], {
+        // We watch the entire apiServicesDir to survive atomic saves (e.g. from VS Code), 
+        // but we aggressively filter events in the handler below.
+        const watcher = chokidar.watch(apiServicesDir, {
             ignoreInitial: true,
             persistent: true
         });
 
-                let debounceTimer;
+        let debounceTimer;
         let configDebounceTimer;
         let isSyncing = false;
         let changedFiles = new Set();
 
         watcher.on('all', (event, filePath) => {
-            if (filePath.includes('generated') || filePath.endsWith('index.ts')) return;
+            const isDefinitions = filePath.includes(path.join(API_SERVICES_RELATIVE_DIR, 'definitions'));
+            const isApiConfig = filePath.endsWith('api.config.ts');
+
+            // Ignore everything that is not a definition or api.config.ts
+            if (!isDefinitions && !isApiConfig) return;
 
             console.log(`[WATCHER] Change detected: ${event} ${filePath}`);
 
-            if (filePath.endsWith('api.config.ts')) {
+            if (isApiConfig) {
                 clearTimeout(configDebounceTimer);
                 configDebounceTimer = setTimeout(() => {
                     console.log(`[WATCHER] Config updated, notifying UI to sync.`);
