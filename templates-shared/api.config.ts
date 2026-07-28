@@ -25,6 +25,15 @@ export const apiConfig = {
     refreshTokenKey: "refresh_token",
     refreshEndpoint: `${BASE_URL}/auth/refresh`,
 
+    /**
+     * Function to extract tokens from your backend response.
+     * Update this if your backend returns tokens in a nested or custom structure.
+     */
+    extractTokens: (responseData: any) => ({
+      accessToken: responseData?.accessToken ?? responseData?.access_token ?? responseData?.token,
+      refreshToken: responseData?.refreshToken ?? responseData?.refresh_token ?? responseData?.refresh,
+    }),
+
     /** Refresh via httpOnly cookie. Edit the method/headers to match your backend. */
     refreshWithCookie: async () => {
       return await axios.post(apiConfig.auth.refreshEndpoint, undefined, {

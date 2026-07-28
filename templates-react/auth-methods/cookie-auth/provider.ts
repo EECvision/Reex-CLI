@@ -96,7 +96,9 @@ export const cookieTokenProvider: CookieTokenProvider = {
       const unwrappedData = isRawAxiosResponse ? response.data : response;
       const responseData = apiConfig.unwrapResponseData ? (unwrappedData?.data ?? unwrappedData) : unwrappedData;
 
-      accessToken = responseData.accessToken;
+      const extracted = apiConfig.auth.extractTokens(responseData);
+
+      accessToken = extracted.accessToken;
 
       if (typeof window !== "undefined" && accessToken) {
         localStorage.setItem(apiConfig.auth.accessTokenKey, accessToken);

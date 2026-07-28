@@ -46,10 +46,9 @@ export const useLogin = (
     },
     ...options,
     onSuccess: (data: any, variables, context) => {
-      const accessToken =
-        data?.accessToken ?? data?.access_token ?? data?.token;
-      const refreshToken =
-        data?.refreshToken ?? data?.refresh_token ?? data?.refresh;
+      const tokens = apiConfig.auth.extractTokens(data);
+      const accessToken = tokens.accessToken;
+      const refreshToken = tokens.refreshToken;
 
       const provider = getActiveProvider();
       provider?.setTokens?.({ accessToken, refreshToken });

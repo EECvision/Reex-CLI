@@ -11,7 +11,7 @@ const COOKIE_FLAG_KEY = "is_cookie_auth_active";
 interface CookieTokenProvider extends TokenProvider {
   setTokens: (params: { accessToken?: string; refreshToken?: string }) => void;
   clearTokens: () => void;
-    setCustomHeaders: (headers: Record<string, string>) => void;
+  setCustomHeaders: (headers: Record<string, string>) => void;
   getCustomHeaders: () => Record<string, string>;
   removeCustomHeader: (key: string) => void;
 }

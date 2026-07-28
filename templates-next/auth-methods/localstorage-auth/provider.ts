@@ -124,21 +124,20 @@ export const localStorageTokenProvider: LocalStorageTokenProvider = {
 
         const response = await apiConfig.auth.refreshWithToken(storedRefreshToken);
 
-        // Safely check if this is a raw Axios response wrapper
         const isRawAxiosResponse =
           response?.config && response?.headers && response?.status;
 
         const unwrappedData = isRawAxiosResponse ? response.data : response;
         const responseData = apiConfig.unwrapResponseData ? (unwrappedData?.data ?? unwrappedData) : unwrappedData;
 
-        const { accessToken: newAccess, refreshToken: newRefresh } =
-          responseData;
+        const extracted = apiConfig.auth.extractTokens(responseData);
+
+        const { accessToken: newAccess, refreshToken: newRefresh } = extracted;
         accessToken = newAccess;
 
         if (newRefresh) {
           localStorage.setItem(apiConfig.auth.refreshTokenKey, newRefresh);
         }
-
         return accessToken;
       } catch {
         console.warn("Refresh failed, logging out...");
