@@ -73,6 +73,7 @@ export const cookieTokenProvider: CookieTokenProvider = {
     accessToken = newAccessToken;
     if (typeof window !== "undefined") {
       localStorage.setItem(apiConfig.auth.accessTokenKey, newAccessToken);
+      window.dispatchEvent(new Event("auth:login"));
     }
   },
 

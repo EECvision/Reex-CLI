@@ -80,6 +80,7 @@ export const localStorageTokenProvider: LocalStorageTokenProvider = {
         localStorage.setItem(apiConfig.auth.accessTokenKey, newAccessToken);
         localStorage.removeItem(apiConfig.auth.refreshTokenKey);
       }
+      window.dispatchEvent(new Event("auth:login"));
     }
   },
 
@@ -132,7 +133,7 @@ export const localStorageTokenProvider: LocalStorageTokenProvider = {
 
         const extracted = apiConfig.auth.extractTokens(responseData);
 
-        const { accessToken: newAccess, refreshToken: newRefresh } = extracted;
+        const { accessToken: newAccess = null, refreshToken: newRefresh } = extracted;
         accessToken = newAccess;
 
         if (newRefresh) {

@@ -77,6 +77,7 @@ export const cookieTokenProvider: CookieTokenProvider = {
     isCookieAuthActive = true;
     if (typeof window !== "undefined") {
       localStorage.setItem(COOKIE_FLAG_KEY, "true");
+      window.dispatchEvent(new Event("auth:login"));
     }
   },
 
