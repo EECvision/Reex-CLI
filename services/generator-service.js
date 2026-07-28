@@ -229,7 +229,7 @@ ${moduleNames.map((name) => `  ...${name}Api,`).join('\n')}
         console.warn(`[Generator] Warning: templates/hooks directory not found in shared or ${framework}`);
       } else {
         // We no longer sanitize the hooks directory to avoid wiping hooks added via `reex add hook`
-        const essentialHooks = ['useAuth.ts', 'useNotification.ts'];
+        const essentialHooks = ['useAuthState.ts', 'useNotification.ts', 'useClearSession.ts'];
         essentialHooks.forEach(hookFile => {
           const targetPath = path.join(hooksDir, hookFile);
           if (!fs.existsSync(targetPath)) {
@@ -421,6 +421,32 @@ ${moduleNames.map((name) => `  ...${name}Api,`).join('\n')}
 
       const copyFolder = (folderName) => {
         const destDir = path.join(apiServicesDir, folderName);
+
+        if (folderName === 'hooks') {
+          const hooksToReset = new Set(['useAuthState.ts', 'useNotification.ts', 'useClearSession.ts']);
+          if (fs.existsSync(destDir)) {
+            fs.readdirSync(destDir).forEach(file => {
+              if (file.endsWith('.ts')) {
+                hooksToReset.add(file);
+              }
+            });
+          } else {
+            fs.mkdirSync(destDir, { recursive: true });
+          }
+          
+          hooksToReset.forEach(hookFile => {
+            const destPath = path.join(destDir, hookFile);
+            const sharedPath = path.join(sharedTemplateDir, 'hooks', hookFile);
+            const templatePath = path.join(templateBaseDir, 'hooks', hookFile);
+            if (fs.existsSync(sharedPath)) {
+              fs.copyFileSync(sharedPath, destPath);
+            } else if (fs.existsSync(templatePath)) {
+              fs.copyFileSync(templatePath, destPath);
+            }
+          });
+          console.log(`[Reset] Reset hooks (only installed and core hooks)`);
+          return;
+        }
         
         const sharedDir = path.join(sharedTemplateDir, folderName);
         if (fs.existsSync(sharedDir)) {
@@ -440,7 +466,7 @@ ${moduleNames.map((name) => `  ...${name}Api,`).join('\n')}
       return;
     }
 
-    // Normalizing target (e.g. src\api-services\hooks\useAuth.ts -> hooks/useAuth.ts)
+    // Normalizing target (e.g. src\api-services\hooks\useAuthState.ts -> hooks/useAuthState.ts)
     let normalizedTarget = target.replace(/\\/g, '/');
     normalizedTarget = normalizedTarget.replace(/^(src\/)?api-services\//, '');
 
@@ -483,15 +509,40 @@ ${moduleNames.map((name) => `  ...${name}Api,`).join('\n')}
 
     if (matches.length > 1) {
        const paths = matches.map(m => m.relativePath).join(', ');
-       throw new Error(`Target "${target}" is ambiguous. Found multiple matches: ${paths}. Please provide a more specific path (e.g. "hooks/useAuth.ts").`);
+       throw new Error(`Target "${target}" is ambiguous. Found multiple matches: ${paths}. Please provide a more specific path (e.g. "hooks/useAuthState.ts").`);
     }
 
     const match = matches[0];
     const destPath = path.join(apiServicesDir, match.relativePath);
     
     if (match.isDirectory) {
-        this.copyRecursiveSync(match.sourcePath, destPath, true);
-        console.log(`[Reset] Reset folder: ${match.relativePath}`);
+        if (match.relativePath === 'hooks') {
+            const hooksToReset = new Set(['useAuthState.ts', 'useNotification.ts', 'useClearSession.ts']);
+            if (fs.existsSync(destPath)) {
+                fs.readdirSync(destPath).forEach(file => {
+                    if (file.endsWith('.ts')) {
+                        hooksToReset.add(file);
+                    }
+                });
+            } else {
+                fs.mkdirSync(destPath, { recursive: true });
+            }
+            
+            hooksToReset.forEach(hookFile => {
+                const targetFilePath = path.join(destPath, hookFile);
+                const sharedPath = path.join(sharedTemplateDir, 'hooks', hookFile);
+                const templatePath = path.join(templateBaseDir, 'hooks', hookFile);
+                if (fs.existsSync(sharedPath)) {
+                    fs.copyFileSync(sharedPath, targetFilePath);
+                } else if (fs.existsSync(templatePath)) {
+                    fs.copyFileSync(templatePath, targetFilePath);
+                }
+            });
+            console.log(`[Reset] Reset folder: hooks (only installed and core hooks)`);
+        } else {
+            this.copyRecursiveSync(match.sourcePath, destPath, true);
+            console.log(`[Reset] Reset folder: ${match.relativePath}`);
+        }
     } else {
         if (!fs.existsSync(path.dirname(destPath))) {
             fs.mkdirSync(path.dirname(destPath), { recursive: true });
