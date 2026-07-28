@@ -36,6 +36,10 @@ class WatcherService {
             // Ignore everything that is not a definition or api.config.ts
             if (!isDefinitions && !isApiConfig) return;
 
+            // Ignore changes to generated files within definitions/ (e.g. index.ts)
+            // to prevent an infinite loop where the generator triggers itself.
+            if (isDefinitions && path.basename(filePath) === 'index.ts') return;
+
             console.log(`[WATCHER] Change detected: ${event} ${filePath}`);
 
             if (isApiConfig) {

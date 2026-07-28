@@ -116,7 +116,7 @@ ${commonImports ? `import { ${commonImports} } from ".";` : ""}
 
 // Helper Types
 type ApiData<T extends (...args: any) => any> = Awaited<ReturnType<T>>;
-type ApiVars<T extends (...args: any) => any> = Parameters<T>[0];
+type ApiVars<T extends (...args: any) => any> = Parameters<T> extends [] ? void : Parameters<T>[0];
 
 ${keyFactory}
 
