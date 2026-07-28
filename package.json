@@ -1,6 +1,6 @@
 {
     "name": "reex-cli",
-    "version": "3.0.1",
+    "version": "4.0.0",
     "description": "CLI tool for Reex API Builder - Generate TypeScript types and React Query hooks from OpenAPI specs",
     "main": "server.js",
     "bin": {
