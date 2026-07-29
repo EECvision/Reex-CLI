@@ -418,6 +418,15 @@ ${moduleNames.map((name) => `  ...${name}Api,`).join('\n')}
 
       resetFile('api.config.ts');
       resetFile('core.ts');
+      
+      const generatedDir = path.join(apiServicesDir, 'generated');
+      const queryConfigPath = path.join(generatedDir, 'query.config.ts');
+      if (fs.existsSync(queryConfigPath)) {
+        fs.unlinkSync(queryConfigPath);
+      }
+      fs.mkdirSync(generatedDir, { recursive: true });
+      hookService.generateBaseHooksFile(generatedDir);
+      console.log(`[Reset] Reset generated/query.config.ts`);
 
       const copyFolder = (folderName) => {
         const destDir = path.join(apiServicesDir, folderName);
@@ -469,6 +478,18 @@ ${moduleNames.map((name) => `  ...${name}Api,`).join('\n')}
     // Normalizing target (e.g. src\api-services\hooks\useAuthState.ts -> hooks/useAuthState.ts)
     let normalizedTarget = target.replace(/\\/g, '/');
     normalizedTarget = normalizedTarget.replace(/^(src\/)?api-services\//, '');
+
+    if (normalizedTarget === 'query.config.ts' || normalizedTarget === 'generated/query.config.ts' || normalizedTarget === 'query.config' || normalizedTarget === 'generated/query.config') {
+      const generatedDir = path.join(apiServicesDir, 'generated');
+      const queryConfigPath = path.join(generatedDir, 'query.config.ts');
+      if (fs.existsSync(queryConfigPath)) {
+        fs.unlinkSync(queryConfigPath);
+      }
+      fs.mkdirSync(generatedDir, { recursive: true });
+      hookService.generateBaseHooksFile(generatedDir);
+      console.log(`[Reset] Reset file: generated/query.config.ts`);
+      return;
+    }
 
     const findInTemplates = (query, dirs) => {
       let matches = [];

@@ -29,6 +29,7 @@ class HookService {
         // Phase 2: Generate module files
     const expectedFiles = new Set();
     expectedFiles.add(path.join(generatedDir, 'index.ts').replace(/\\/g, '/'));
+    expectedFiles.add(path.join(generatedDir, 'query.config.ts').replace(/\\/g, '/'));
     
     modules.forEach((moduleName) => {
       const pascalModule = moduleName.charAt(0).toUpperCase() + moduleName.slice(1);
@@ -112,7 +113,7 @@ class HookService {
       const rawContent = `// Generated file - DO NOT EDIT
 ${tanstackImportLine}
 import { ${moduleName}Api } from "../definitions/${moduleName}";
-${commonImports ? `import { ${commonImports} } from ".";` : ""}
+${commonImports ? `import { ${commonImports} } from "./query.config";` : ""}
 
 // Helper Types
 type ApiData<T extends (...args: any) => any> = Awaited<ReturnType<T>>;
@@ -128,6 +129,7 @@ ${hooks.join("\n\n")}
       fs.writeFileSync(path.join(generatedDir, fileName), fileContent);
     });
 
+    this.generateBaseHooksFile(generatedDir);
     this.generateIndexFile(generatedDir, exportLines);
 
     // Phase 3: Cleanup Old Files (e.g. from deleted definitions)
@@ -267,9 +269,13 @@ ${hooks.join("\n\n")}
 };`;
   }
 
-  generateIndexFile(generatedDir, exportLines) {
-    const content = `
-// Generated file - DO NOT EDIT
+  generateBaseHooksFile(generatedDir) {
+    const configPath = path.join(generatedDir, "query.config.ts");
+    if (fs.existsSync(configPath)) {
+      return;
+    }
+
+    const content = `// @user-config — customize query defaults here
 import {
   type QueryKey,
   type UseMutationOptions,
@@ -327,7 +333,12 @@ export const useApiQuery = <
     enabled: isEnabled,
   });
 };
+`;
+    fs.writeFileSync(configPath, content);
+  }
 
+  generateIndexFile(generatedDir, exportLines) {
+    const content = `// Generated file - DO NOT EDIT
 ${exportLines.join("\n")}
 `;
     fs.writeFileSync(path.join(generatedDir, "index.ts"), content);
