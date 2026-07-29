@@ -6,7 +6,7 @@ let isCookieAuthActive: boolean = false;
 let customHeaders: Record<string, string> | null = null;
 
 // Used to track auth status across tabs, without exposing the actual token to JS
-const COOKIE_FLAG_KEY = "is_cookie_auth_active";
+const COOKIE_FLAG_KEY = "reex_is_cookie_auth_active";
 
 interface CookieTokenProvider extends TokenProvider {
   setTokens: (params: { accessToken?: string; refreshToken?: string }) => void;
@@ -36,7 +36,7 @@ export const cookieTokenProvider: CookieTokenProvider = {
   getCustomHeaders: () => {
     if (customHeaders) return customHeaders;
     if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("custom_headers");
+      const stored = localStorage.getItem("reex_custom_headers");
       if (stored) {
         try {
           return JSON.parse(stored);
@@ -51,7 +51,7 @@ export const cookieTokenProvider: CookieTokenProvider = {
   setCustomHeaders: (headers) => {
     customHeaders = headers;
     if (typeof window !== "undefined") {
-      localStorage.setItem("custom_headers", JSON.stringify(headers));
+      localStorage.setItem("reex_custom_headers", JSON.stringify(headers));
     }
   },
 
@@ -60,12 +60,12 @@ export const cookieTokenProvider: CookieTokenProvider = {
       delete customHeaders[key];
     }
     if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("custom_headers");
+      const stored = localStorage.getItem("reex_custom_headers");
       if (stored) {
         try {
           const headers = JSON.parse(stored);
           delete headers[key];
-          localStorage.setItem("custom_headers", JSON.stringify(headers));
+          localStorage.setItem("reex_custom_headers", JSON.stringify(headers));
         } catch {}
       }
     }
@@ -86,7 +86,7 @@ export const cookieTokenProvider: CookieTokenProvider = {
     customHeaders = null;
     if (typeof window !== "undefined") {
       localStorage.removeItem(COOKIE_FLAG_KEY);
-      localStorage.removeItem("custom_headers");
+      localStorage.removeItem("reex_custom_headers");
     }
   },
 

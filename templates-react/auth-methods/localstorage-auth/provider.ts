@@ -34,7 +34,7 @@ export const localStorageTokenProvider: LocalStorageTokenProvider = {
   getCustomHeaders: () => {
     if (customHeaders) return customHeaders;
     if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("custom_headers");
+      const stored = localStorage.getItem("reex_custom_headers");
       if (stored) {
         try {
           return JSON.parse(stored);
@@ -49,7 +49,7 @@ export const localStorageTokenProvider: LocalStorageTokenProvider = {
   setCustomHeaders: (headers) => {
     customHeaders = headers;
     if (typeof window !== "undefined") {
-      localStorage.setItem("custom_headers", JSON.stringify(headers));
+      localStorage.setItem("reex_custom_headers", JSON.stringify(headers));
     }
   },
 
@@ -58,12 +58,12 @@ export const localStorageTokenProvider: LocalStorageTokenProvider = {
       delete customHeaders[key];
     }
     if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("custom_headers");
+      const stored = localStorage.getItem("reex_custom_headers");
       if (stored) {
         try {
           const headers = JSON.parse(stored);
           delete headers[key];
-          localStorage.setItem("custom_headers", JSON.stringify(headers));
+          localStorage.setItem("reex_custom_headers", JSON.stringify(headers));
         } catch {}
       }
     }
@@ -92,7 +92,7 @@ export const localStorageTokenProvider: LocalStorageTokenProvider = {
     if (typeof window !== "undefined") {
       localStorage.removeItem(apiConfig.auth.accessTokenKey);
       localStorage.removeItem(apiConfig.auth.refreshTokenKey);
-      localStorage.removeItem("custom_headers");
+      localStorage.removeItem("reex_custom_headers");
     }
   },
 
