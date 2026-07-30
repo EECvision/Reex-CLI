@@ -48,8 +48,7 @@ export const proxyTokenProvider: TokenProvider = {
 
 /**
  * Use this function to access the active token provider from an external file.
- * This is the recommended way to get or set auth tokens after login if you are 
- * not using the useLogin hook.
+ * This is the recommended way to get or set auth tokens after login.
  */
 export function getActiveProvider(): {
   getToken?: () => Promise<string | null> | string | null;
