@@ -54,6 +54,7 @@ export function getActiveProvider(): {
   setTokens?: (p: { accessToken: string; refreshToken?: string }) => void;
   clearTokens?: () => void;
   setCustomHeaders?: (headers: Record<string, string>) => void;
+  getCustomHeaders?: () => Promise<Record<string, string>> | Record<string, string>;
   removeCustomHeader?: (key: string) => void;
 } | null {
   return activeTokenProvider ?? null;

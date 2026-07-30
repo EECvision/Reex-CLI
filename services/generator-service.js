@@ -7,6 +7,14 @@ const hookService = require('./hook-service');
 
 const sseService = require('./sse-service');
 
+const CORE_HOOKS = [
+  'useAuthState.ts',
+  'useNotification.ts',
+  'useClearSession.ts',
+  'useTokens.ts',
+  'useHeaders.ts'
+];
+
 class GeneratorService {
 
   sanitizeDirectory(targetDir, templateDirs, recoveredDir, basePath = '') {
@@ -229,7 +237,7 @@ ${moduleNames.map((name) => `  ...${name}Api,`).join('\n')}
         console.warn(`[Generator] Warning: templates/hooks directory not found in shared or ${framework}`);
       } else {
         this.sanitizeDirectory(hooksDir, [sharedHooksDir, templateHooksDir], recoveredDir);
-        const essentialHooks = ['useAuthState.ts', 'useNotification.ts', 'useClearSession.ts'];
+        const essentialHooks = CORE_HOOKS;
         essentialHooks.forEach(hookFile => {
           const targetPath = path.join(hooksDir, hookFile);
           if (!fs.existsSync(targetPath)) {
@@ -432,7 +440,7 @@ ${moduleNames.map((name) => `  ...${name}Api,`).join('\n')}
         const destDir = path.join(apiServicesDir, folderName);
 
         if (folderName === 'hooks') {
-          const hooksToReset = new Set(['useAuthState.ts', 'useNotification.ts', 'useClearSession.ts']);
+          const hooksToReset = new Set(CORE_HOOKS);
           if (fs.existsSync(destDir)) {
             fs.readdirSync(destDir).forEach(file => {
               if (file.endsWith('.ts')) {
@@ -538,7 +546,7 @@ ${moduleNames.map((name) => `  ...${name}Api,`).join('\n')}
     
     if (match.isDirectory) {
         if (match.relativePath === 'hooks') {
-            const hooksToReset = new Set(['useAuthState.ts', 'useNotification.ts', 'useClearSession.ts']);
+            const hooksToReset = new Set(CORE_HOOKS);
             if (fs.existsSync(destPath)) {
                 fs.readdirSync(destPath).forEach(file => {
                     if (file.endsWith('.ts')) {

@@ -26,9 +26,9 @@ export const apiConfig = {
      * Function to extract tokens from your backend response.
      * Update this if your backend returns tokens in a nested or custom structure.
      */
-    extractTokens: (responseData: Record<string, unknown>) => ({
-      accessToken: (responseData?.accessToken ?? responseData?.access_token ?? responseData?.token) as string | undefined,
-      refreshToken: (responseData?.refreshToken ?? responseData?.refresh_token ?? responseData?.refresh) as string | undefined,
+    extractTokens: (response: Record<string, unknown>) => ({
+      accessToken: response?.accessToken as string | undefined,
+      refreshToken: response?.refreshToken as string | undefined,
     }),
 
     /** Refresh via httpOnly cookie. Edit the method/headers to match your backend. */
