@@ -33,8 +33,6 @@ function generateTypes(targetDir, manifest, changedModules = null) {
     }
 
     Object.keys(moduleMethods).forEach(methodName => {
-      if (methodName.startsWith('delete_')) return;
-
       const methodData = moduleMethods[methodName];
       const typeFileName = `${methodName}.ts`;
       const typeFilePath = path.join(moduleTypeDir, typeFileName);

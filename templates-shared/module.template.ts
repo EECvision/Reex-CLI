@@ -4,7 +4,7 @@ import { type get_list__TypeName__s } from "../types/__ModuleName__/get_list__Ty
 import { type get___ModuleNameSingular__Detail } from "../types/__ModuleName__/get___ModuleNameSingular__Detail";
 import { type post_create__TypeName__ } from "../types/__ModuleName__/post_create__TypeName__";
 import { type put_update__TypeName__ } from "../types/__ModuleName__/put_update__TypeName__";
-
+import { type delete_remove__TypeName__ } from "../types/__ModuleName__/delete_remove__TypeName__";
 // --- Types ---
 
 interface Get__TypeName__sParams {
@@ -45,7 +45,7 @@ export const __ModuleName__Api = {
   }: Update__TypeName__Params): Promise<put_update__TypeName__> =>
     apiClient.put(`/path/to/__ModuleName__/${id}`, payload),
 
-  delete_remove__TypeName__: (id: string): Promise<any> =>
+  delete_remove__TypeName__: (id: string): Promise<delete_remove__TypeName__> =>
     apiClient.delete(`/path/to/__ModuleName__/${id}`),
 
   // --- Example: Functions with multiple parameters must wrap them in an object ---
