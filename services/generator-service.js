@@ -165,17 +165,18 @@ class GeneratorService {
         console.log("[Generator] Scaffolded core.ts from template");
       }
 
-      // 4. Custom folder - Scaffold Once
+      // 4. Custom folder - Copy from templates (no overwrite)
       const customDir = path.join(apiTargetDir, API_SERVICES_RELATIVE_DIR, 'custom');
       if (!fs.existsSync(customDir)) {
         fs.mkdirSync(customDir, { recursive: true });
-        const customIndexPath = path.join(customDir, 'index.ts');
-        fs.writeFileSync(
-          customIndexPath,
-          "// You are free to add custom codes, types, or utilities here.\n// Files in this directory will not be deleted or overwritten by the generator.\n"
-        );
-        console.log("[Generator] Scaffolded custom directory");
       }
+      
+      const sharedCustomDir = path.join(sharedTemplateDir, 'custom');
+      const templateCustomDir = path.join(templateBaseDir, 'custom');
+      
+      if (fs.existsSync(sharedCustomDir)) this.copyRecursiveSync(sharedCustomDir, customDir, false);
+      if (fs.existsSync(templateCustomDir)) this.copyRecursiveSync(templateCustomDir, customDir, false);
+      console.log("[Generator] Scaffolded custom directory");
       // 2. Generate Manifest
       // Prune definition files first (remove unused interfaces/imports)
       await projectService.pruneUnusedDefinitions(definitionsDir);

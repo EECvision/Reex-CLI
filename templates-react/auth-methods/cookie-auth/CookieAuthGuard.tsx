@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { cookieTokenProvider } from "./provider";
 import { apiClient } from "../../../api-services/core";
+import LoadingScreen from "../../custom/loadingScreen/LoadingScreen";
 
 /**
  * Restores the user session on mount via the refresh endpoint.
@@ -47,9 +48,8 @@ export const CookieAuthGuard = ({
     return () => window.removeEventListener("auth:logout", handleLogout);
   }, []);
 
-  // Replace with your app's loading component
   if (!isReady) {
-    return <div>Loading...</div>;
+    return <LoadingScreen />;
   }
 
   return <>{children}</>;

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { localStorageTokenProvider } from "./provider";
 import { apiConfig } from "../../api.config";
+import LoadingScreen from "../../custom/loadingScreen/LoadingScreen";
 
 /**
  * Restores the user session on mount by exchanging the stored refresh token.
@@ -22,7 +23,9 @@ export const LocalStorageAuthGuard = ({
       const hasRefreshToken = !!localStorage.getItem(
         apiConfig.auth.refreshTokenKey,
       );
-      const hasAccessToken = !!localStorage.getItem(apiConfig.auth.accessTokenKey);
+      const hasAccessToken = !!localStorage.getItem(
+        apiConfig.auth.accessTokenKey,
+      );
 
       if (hasRefreshToken && localStorageTokenProvider?.refreshToken) {
         try {
@@ -52,8 +55,7 @@ export const LocalStorageAuthGuard = ({
     return () => window.removeEventListener("auth:logout", handleLogout);
   }, []);
 
-  // Replace with your app's loading component
-  if (!isReady) return <div>Loading...</div>;
+  if (!isReady) return <LoadingScreen />;
 
   return <>{children}</>;
 };
