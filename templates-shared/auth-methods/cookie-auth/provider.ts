@@ -4,6 +4,7 @@ import { apiConfig } from "../../api.config";
 
 let isCookieAuthActive: boolean = false;
 let customHeaders: Record<string, string> | null = null;
+let refreshPromise: Promise<string | null> | null = null;
 
 // Used to track auth status across tabs, without exposing the actual token to JS
 const COOKIE_FLAG_KEY = "reex_is_cookie_auth_active";
@@ -86,6 +87,7 @@ export const cookieTokenProvider: CookieTokenProvider = {
   clearTokens: () => {
     isCookieAuthActive = false;
     customHeaders = null;
+    refreshPromise = null;
     if (typeof window !== "undefined") {
       localStorage.removeItem(COOKIE_FLAG_KEY);
       localStorage.removeItem("reex_custom_headers");
@@ -93,23 +95,33 @@ export const cookieTokenProvider: CookieTokenProvider = {
   },
 
   refreshToken: async () => {
-    try {
-      await apiConfig.auth.refreshWithCookie();
-
-      // If the refresh succeeds, the browser now has the updated cookie.
-      isCookieAuthActive = true;
-      if (typeof window !== "undefined") {
-        localStorage.setItem(COOKIE_FLAG_KEY, "true");
-      }
-
-      return "cookie-active";
-    } catch {
-      // Refresh failed, clear the session flag
-      isCookieAuthActive = false;
-      if (typeof window !== "undefined") {
-        localStorage.removeItem(COOKIE_FLAG_KEY);
-      }
-      return null;
+    if (refreshPromise) {
+      return refreshPromise;
     }
+
+    refreshPromise = (async () => {
+      try {
+        await apiConfig.auth.refreshWithCookie();
+
+        // If the refresh succeeds, the browser now has the updated cookie.
+        isCookieAuthActive = true;
+        if (typeof window !== "undefined") {
+          localStorage.setItem(COOKIE_FLAG_KEY, "true");
+        }
+
+        return "cookie-active";
+      } catch {
+        // Refresh failed, clear the session flag
+        isCookieAuthActive = false;
+        if (typeof window !== "undefined") {
+          localStorage.removeItem(COOKIE_FLAG_KEY);
+        }
+        return null;
+      } finally {
+        refreshPromise = null;
+      }
+    })();
+
+    return refreshPromise;
   },
 };

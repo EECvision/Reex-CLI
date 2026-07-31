@@ -9,6 +9,7 @@ const sseService = require('./sse-service');
 
 const CORE_HOOKS = [
   'useAuthState.ts',
+  'notification.ts',
   'useNotification.ts',
   'useClearSession.ts',
   'useTokens.ts',
@@ -62,7 +63,7 @@ class GeneratorService {
   }
 
 
-  copyRecursiveSync(src, dest, overwrite = false) {
+  copyRecursiveSync(src, dest, overwrite = false, stripUseClient = false) {
     if (fs.existsSync(src)) {
       if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
       fs.readdirSync(src).forEach((childItemName) => {
@@ -70,10 +71,16 @@ class GeneratorService {
         const destPath = path.join(dest, childItemName);
         const stats = fs.statSync(srcPath);
         if (stats.isDirectory()) {
-          this.copyRecursiveSync(srcPath, destPath, overwrite);
+          this.copyRecursiveSync(srcPath, destPath, overwrite, stripUseClient);
         } else {
           if (overwrite || !fs.existsSync(destPath)) {
-            fs.copyFileSync(srcPath, destPath);
+            if (stripUseClient && srcPath.endsWith('.tsx')) {
+              let content = fs.readFileSync(srcPath, 'utf8');
+              content = content.replace(/^["']use client["'];?\s*/gm, '');
+              fs.writeFileSync(destPath, content);
+            } else {
+              fs.copyFileSync(srcPath, destPath);
+            }
           }
         }
       });
@@ -174,8 +181,8 @@ class GeneratorService {
       const sharedCustomDir = path.join(sharedTemplateDir, 'custom');
       const templateCustomDir = path.join(templateBaseDir, 'custom');
       
-      if (fs.existsSync(sharedCustomDir)) this.copyRecursiveSync(sharedCustomDir, customDir, false);
-      if (fs.existsSync(templateCustomDir)) this.copyRecursiveSync(templateCustomDir, customDir, false);
+      if (fs.existsSync(sharedCustomDir)) this.copyRecursiveSync(sharedCustomDir, customDir, false, framework === 'react');
+      if (fs.existsSync(templateCustomDir)) this.copyRecursiveSync(templateCustomDir, customDir, false, framework === 'react');
       console.log("[Generator] Scaffolded custom directory");
       // 2. Generate Manifest
       // Prune definition files first (remove unused interfaces/imports)
@@ -220,8 +227,8 @@ ${moduleNames.map((name) => `  ...${name}Api,`).join('\n')}
         console.warn(`[Generator] Warning: templates/providers directory not found in shared or ${framework}`);
       } else {
         this.sanitizeDirectory(providersDir, [sharedProvidersDir, templateProvidersDir], recoveredDir);
-        if (fs.existsSync(sharedProvidersDir)) this.copyRecursiveSync(sharedProvidersDir, providersDir, false);
-        if (fs.existsSync(templateProvidersDir)) this.copyRecursiveSync(templateProvidersDir, providersDir, false);
+        if (fs.existsSync(sharedProvidersDir)) this.copyRecursiveSync(sharedProvidersDir, providersDir, false, framework === 'react');
+        if (fs.existsSync(templateProvidersDir)) this.copyRecursiveSync(templateProvidersDir, providersDir, false, framework === 'react');
         console.log("[Generator] Scaffolded providers from templates (if missing)");
       }
 
@@ -267,8 +274,8 @@ ${moduleNames.map((name) => `  ...${name}Api,`).join('\n')}
         console.warn(`[Generator] Warning: templates/auth-methods directory not found in shared or ${framework}`);
       } else {
         this.sanitizeDirectory(authDir, [sharedAuthDir, templateAuthDir], recoveredDir);
-        if (fs.existsSync(sharedAuthDir)) this.copyRecursiveSync(sharedAuthDir, authDir, false);
-        if (fs.existsSync(templateAuthDir)) this.copyRecursiveSync(templateAuthDir, authDir, false);
+        if (fs.existsSync(sharedAuthDir)) this.copyRecursiveSync(sharedAuthDir, authDir, false, framework === 'react');
+        if (fs.existsSync(templateAuthDir)) this.copyRecursiveSync(templateAuthDir, authDir, false, framework === 'react');
         console.log("[Generator] Scaffolded auth-methods from templates (if missing)");
       }
 
@@ -468,12 +475,12 @@ ${moduleNames.map((name) => `  ...${name}Api,`).join('\n')}
         
         const sharedDir = path.join(sharedTemplateDir, folderName);
         if (fs.existsSync(sharedDir)) {
-          this.copyRecursiveSync(sharedDir, destDir, true);
+          this.copyRecursiveSync(sharedDir, destDir, true, framework === 'react');
         }
 
         const templateDir = path.join(templateBaseDir, folderName);
         if (fs.existsSync(templateDir)) {
-          this.copyRecursiveSync(templateDir, destDir, true);
+          this.copyRecursiveSync(templateDir, destDir, true, framework === 'react');
         }
         console.log(`[Reset] Reset ${folderName}`);
       };

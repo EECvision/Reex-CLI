@@ -7,7 +7,7 @@ import { type ReexConfig } from "./core";
 // (e.g. process.env.NEXT_PUBLIC_API_URL).
 const BASE_URL = "https://example.com/api/v1";
 
-export const apiConfig = {
+export const apiConfig: ReexConfig = {
   baseURL: BASE_URL,
 
   // Set to `true` if your API wraps every response in a top-level `data` property.
@@ -66,4 +66,4 @@ export const apiConfig = {
         refreshToken: storedRefreshToken,
       }),
   },
-} satisfies ReexConfig;
+};

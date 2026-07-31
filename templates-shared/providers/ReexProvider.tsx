@@ -6,7 +6,7 @@ import { type ReactNode, useState } from "react";
 import { AuthProvider } from "../auth-methods/AuthProvider";
 import type { AuthStrategy } from "../auth-methods/manager";
 import AppNotification from "../custom/notification/AppNotification/AppNotification";
-import { NotificationProvider } from "../hooks/useNotification";
+import { NotificationProvider } from "./NotificationProvider";
 
 export function ReexProvider({
   children,

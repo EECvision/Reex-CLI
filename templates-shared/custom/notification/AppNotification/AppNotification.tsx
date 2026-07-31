@@ -18,7 +18,7 @@ const AppNotification = () => {
 
 export default AppNotification;
 
-// A Sample use of a notification library
+// @user-config — Example integration with a third-party notification library.
 // "use client";
 
 // import { useEffect } from "react";
@@ -28,7 +28,7 @@ export default AppNotification;
 // import {
 //   ApiNotification,
 //   NOTIFICATION_EVENT,
-// } from "@/api-services/hooks/useNotification";
+// } from "@/api-services/hooks/notification";
 
 // const AppNotification = () => {
 //   useEffect(() => {
