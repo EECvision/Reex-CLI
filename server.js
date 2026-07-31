@@ -42,9 +42,10 @@ function startServer(port) {
     const watcher = watcherService.start(apiTargetDir);
 
     // Initial Generation
+    let initialGenPromise = Promise.resolve();
     if (apiTargetDir) {
         console.log("[STARTUP] Triggering initial generation...");
-        generatorService.regenerate(apiTargetDir).catch(e => console.error(e));
+        initialGenPromise = generatorService.regenerate(apiTargetDir).catch(e => console.error(e));
     }
 
     // ---------------------------------------------------------
@@ -67,7 +68,7 @@ function startServer(port) {
     });
 
     const server = app.listen(port, () => {
-        console.log(`Server running at http://localhost:${port}`);
+        console.log(`Server running at port ${port}`);
     });
 
     // Provide a graceful shutdown method for the CLI to use
@@ -79,7 +80,7 @@ function startServer(port) {
         }
     };
 
-    return { server, watcher, shutdown };
+    return { server, watcher, shutdown, initialGenPromise };
 }
 
 module.exports = { startServer };

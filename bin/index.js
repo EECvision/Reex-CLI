@@ -85,13 +85,29 @@ program
       fs.writeFileSync(metadataFile, JSON.stringify(metadata, null, 2));
 
       // Start the Server with the guaranteed open port
-      startServer(finalPort);
+      const { initialGenPromise } = startServer(finalPort);
+      await initialGenPromise;
 
       // Construct the UI URL using the final port
       const clientUrl = `https://reex-api-builder.toolshq.app/?localPort=${finalPort}`;
 
       if (options.open !== false) {
-        console.log(`\n🌐 Opening UI: ${clientUrl}`);
+        console.log(`\n🌐 Server is ready!`);
+        console.log(`⚠️  IMPORTANT: If your browser prompts to "Access other apps and services on this device", you MUST click "Allow" to sync your project.`);
+        
+        const rl = readline.createInterface({
+          input: process.stdin,
+          output: process.stdout
+        });
+        
+        await new Promise(resolve => {
+          rl.question(`\nPress Enter to open the Reex UI in your browser...`, () => {
+            rl.close();
+            resolve();
+          });
+        });
+
+        console.log(`\nOpening UI: ${clientUrl}`);
         try {
           await open(clientUrl);
         } catch (openError) {
@@ -99,6 +115,7 @@ program
         }
       } else {
         console.log(`\n🌐 UI available at: ${clientUrl}`);
+        console.log(`\n⚠️  IMPORTANT: If your browser prompts to "Access other apps and services on this device", you MUST click "Allow" to sync your project.`);
       }
     } catch (error) {
       console.error(`\n❌ An unexpected error occurred:`, error.message);
