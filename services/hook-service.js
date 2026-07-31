@@ -251,18 +251,33 @@ ${hooks.join("\n\n")}
     // Mutation
     // We assume mutations take 1 argument (variables) or void.
     // The inference handles both correctly.
+    const isDelete = methodName.startsWith("delete_");
+
     return `${jsDoc}export const ${hookName} = (
   options?: Omit<
     UseMutationOptions<${apiData}, Error, ${apiVars}>,
     "mutationFn"
-  >
+  > & { invalidate?: boolean }
 ) => {
   const queryClient = useQueryClient();
 
   return useApiMutation(${apiMethod}, {
     ...options,
     onSuccess: (data, variables, context) => {
-      queryClient.invalidateQueries({ queryKey: ${keyFactoryName}.all });
+      if (options?.invalidate !== false) {
+        ${isDelete ? `// Automatically remove detail queries matching these exact variables to prevent 404 refetches
+        if (variables) {
+          queryClient.removeQueries({
+            predicate: (query) => {
+              return (
+                query.queryKey[0] === ${keyFactoryName}.all[0] &&
+                JSON.stringify(query.queryKey[2]) === JSON.stringify(variables)
+              );
+            },
+          });
+        }
+        ` : ''}queryClient.invalidateQueries({ queryKey: ${keyFactoryName}.all });
+      }
       (options?.onSuccess as any)?.(data, variables, context);
     },
   });
