@@ -103,7 +103,7 @@ export const createApiClient = (
         }
       }
 
-      if (process.env.NODE_ENV === "development") {
+      if (apiConfig.enableApiLogging) {
         console.log(
           `[API Request] ${config.method?.toUpperCase()} ${config.url}`,
           config.params || config.data,
@@ -123,7 +123,7 @@ export const createApiClient = (
         ? (rawData?.data ?? rawData)
         : rawData;
 
-      if (process.env.NODE_ENV === "development") {
+      if (apiConfig.enableApiLogging) {
         console.log(
           `[API Success] ${response.config.method?.toUpperCase()} ${response.config.url}`,
           res,

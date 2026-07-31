@@ -66,7 +66,9 @@ export const cookieTokenProvider: CookieTokenProvider = {
           const headers = JSON.parse(stored);
           delete headers[key];
           localStorage.setItem("reex_custom_headers", JSON.stringify(headers));
-        } catch {}
+        } catch {
+          // ignore JSON parse / storage errors
+        }
       }
     }
   },

@@ -13,6 +13,14 @@ export const apiConfig = {
   /** Set to true if your API wraps responses in a 'data' object */
   unwrapResponseData: false,
 
+  /** 
+   * Whether to log API requests/responses to the console.
+   * To enable only in dev:
+   *   Next.js: process.env.NODE_ENV === "development"
+   *   Vite/React: import.meta.env.DEV
+   */
+  enableApiLogging: true,
+
   /**
    * 2. AUTHENTICATION SETTINGS
    * Customize these to match your backend's authentication endpoints

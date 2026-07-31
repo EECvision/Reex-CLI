@@ -15,7 +15,7 @@ class SseService {
         res.setHeader('Access-Control-Allow-Credentials', 'true');
         res.flushHeaders();
 
-        console.log("[SSE] New Client Connected");
+        console.log("[Bridge] New Client Connected");
         this.clients.push(res);
         req.on('close', () => {
             this.clients = this.clients.filter(c => c !== res);

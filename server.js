@@ -11,7 +11,7 @@ function startServer(port) {
 
     // CORS Configuration: Allow the Hosted UI to talk to us
     const allowedOrigins = (process.env.CORS_ORIGIN || "*").split(',');
-    console.log("[CORS] Allowed Origins:", allowedOrigins);
+    // console.log("[CORS] Allowed Origins:", allowedOrigins);
     app.use(cors({
         origin: function (origin, callback) {
             // Allow requests with no origin (like mobile apps or curl requests)

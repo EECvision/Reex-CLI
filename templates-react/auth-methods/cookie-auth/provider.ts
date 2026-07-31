@@ -64,7 +64,9 @@ export const cookieTokenProvider: CookieTokenProvider = {
           const headers = JSON.parse(stored);
           delete headers[key];
           localStorage.setItem("reex_custom_headers", JSON.stringify(headers));
-        } catch {}
+        } catch {
+          // ignore JSON parse / storage errors
+        }
       }
     }
   },
@@ -99,7 +101,7 @@ export const cookieTokenProvider: CookieTokenProvider = {
 
       const extracted = apiConfig.auth.extractTokens(responseData);
 
-      accessToken = extracted.accessToken;
+      accessToken = extracted.accessToken ?? null;
 
       if (typeof window !== "undefined" && accessToken) {
         localStorage.setItem(apiConfig.auth.accessTokenKey, accessToken);

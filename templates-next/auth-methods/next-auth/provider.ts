@@ -27,7 +27,7 @@ export const nextAuthTokenProvider: NextAuthTokenProvider = {
     getCustomHeaders: () => {
         if (customHeaders) return customHeaders;
         if (typeof window !== "undefined") {
-            const stored = localStorage.getItem("custom_headers");
+            const stored = localStorage.getItem("reex_custom_headers");
             if (stored) {
                 try {
                     return JSON.parse(stored);
@@ -42,7 +42,7 @@ export const nextAuthTokenProvider: NextAuthTokenProvider = {
     setCustomHeaders: (headers) => {
         customHeaders = headers;
         if (typeof window !== "undefined") {
-            localStorage.setItem("custom_headers", JSON.stringify(headers));
+            localStorage.setItem("reex_custom_headers", JSON.stringify(headers));
         }
     },
 
@@ -60,7 +60,7 @@ export const nextAuthTokenProvider: NextAuthTokenProvider = {
     clearTokens: () => {
         customHeaders = null;
         if (typeof window !== "undefined") {
-            localStorage.removeItem("custom_headers");
+            localStorage.removeItem("reex_custom_headers");
         }
         if (process.env.NODE_ENV === "development") {
             console.warn(
