@@ -93,7 +93,7 @@ program
 
       if (options.open !== false) {
         console.log(`\n🌐 Server is ready!`);
-        console.log(`⚠️  IMPORTANT: If your browser prompts to "Access other apps and services on this device", you MUST click "Allow" to sync your project.`);
+        console.log(`⚠️  REQUIRED: To sync your project, click "Allow" if your browser asks to "Access other apps and services on this device".`);
         
         const rl = readline.createInterface({
           input: process.stdin,

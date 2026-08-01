@@ -87,7 +87,7 @@ export const createApiClient = (
 
       if (tokenProvider) {
         const token = await tokenProvider.getToken();
-        if (token && config.headers) {
+        if (token && token !== "cookie-active" && config.headers) {
           config.headers.Authorization = `Bearer ${token}`;
         }
 
