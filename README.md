@@ -1,8 +1,13 @@
-# Reex API Builder
+# Reex API Builder (`reex-cli`)
+
+[![npm version](https://img.shields.io/npm/v/reex-cli.svg?style=flat-square)](https://www.npmjs.com/package/reex-cli)
+[![npm downloads](https://img.shields.io/npm/dm/reex-cli.svg?style=flat-square)](https://www.npmjs.com/package/reex-cli)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT)
+[![GitHub Repository](https://img.shields.io/badge/GitHub-EECvision%2FReex--api--bridge-blue?style=flat-square&logo=github)](https://github.com/EECvision/Reex-api-bridge)
 
 Reex API Builder is an intelligent API client built to bridge the gap between backend and frontend teams. It provides a robust, standardized environment for developers to test APIs and manage collections, while being meticulously designed to eliminate frontend integration boilerplate. 
 
-**✨ The magic happens in your browser. No installation required to start testing APIs.** Whether you are a backend developer testing endpoints or a frontend developer generating integration code, you can jump right in using the web app.
+**✨ The magic happens in your browser. No installation required to start testing APIs.** Whether you are a backend developer testing endpoints or a frontend developer generating integration code, you can jump right in using the web app or install the npm package [`reex-cli`](https://www.npmjs.com/package/reex-cli).
 
 ---
 

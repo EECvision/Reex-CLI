@@ -11,6 +11,10 @@
         "test": "node --test tests/"
     },
     "keywords": [
+        "reex",
+        "reex-cli",
+        "reex-api-builder",
+        "api-builder",
         "api",
         "openapi",
         "swagger",
@@ -24,8 +28,12 @@
     "author": "Ezeka Emmanuel <ezekaemmanuel1710@gmail.com>",
     "license": "MIT",
     "homepage": "https://reex-api-builder.toolshq.app",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/EECvision/Reex-api-bridge.git"
+    },
     "bugs": {
-        "url": "https://reex-api-builder.toolshq.app/report-issue"
+        "url": "https://github.com/EECvision/Reex-api-bridge/issues"
     },
     "engines": {
         "node": ">=16.0.0"
