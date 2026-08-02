@@ -2,14 +2,14 @@
 "use client";
 
 import { useEffect } from "react";
-import { localStorageTokenProvider } from "./provider";
+import { jwtTokenProvider } from "./provider";
 import { apiConfig } from "../../api.config";
 
 /**
  * Restores the user session on mount by exchanging the stored refresh token.
  */
 
-export const LocalStorageAuthGuard = ({
+export const JwtAuthGuard = ({
   children,
 }: {
   children: React.ReactNode;
@@ -25,9 +25,9 @@ export const LocalStorageAuthGuard = ({
         apiConfig.auth.accessTokenKey,
       );
 
-      if ((hasRefreshToken || hasAccessToken) && localStorageTokenProvider?.refreshToken) {
+      if ((hasRefreshToken || hasAccessToken) && jwtTokenProvider?.refreshToken) {
         try {
-          await localStorageTokenProvider.refreshToken();
+          await jwtTokenProvider.refreshToken();
         } catch (error) {
           console.warn("Session restoration failed:", error);
         }

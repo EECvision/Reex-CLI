@@ -1,11 +1,11 @@
 import { cookieTokenProvider } from "./cookie-auth/provider";
-import { localStorageTokenProvider } from "./localstorage-auth/provider";
+import { jwtTokenProvider } from "./jwt-auth/provider";
 import { nextAuthTokenProvider } from "./next-auth/provider";
 import { type TokenProvider } from "./types";
 
-export type AuthStrategy = "cookie" | "next-auth" | "localstorage";
+export type AuthStrategy = "jwt" | "cookie" | "next-auth";
 
-let activeTokenProvider: TokenProvider = localStorageTokenProvider;
+let activeTokenProvider: TokenProvider = jwtTokenProvider;
 
 /**
  * Updates the globally active token provider based on the chosen strategy.
@@ -19,8 +19,8 @@ export const setActiveStrategy = (strategy: AuthStrategy) => {
     case "next-auth":
       activeTokenProvider = nextAuthTokenProvider;
       break;
-    case "localstorage":
-      activeTokenProvider = localStorageTokenProvider;
+    case "jwt":
+      activeTokenProvider = jwtTokenProvider;
       break;
   }
 };

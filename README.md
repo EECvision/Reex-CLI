@@ -42,7 +42,7 @@ reex reset
 * **Zero-Boilerplate Generation:** Instantly transform API collections into tested REST API code, React Query hooks, and TypeScript interfaces.
 * **Intelligent Two-Way Sync:** Your code and the tool's UI are always aligned. Edit in your IDE or tweak in the tool—changes reflect perfectly on both sides.
 * **Smart API Diffing:** Never get caught off guard by a backend update. Re-import a collection and instantly see exactly what endpoints, payloads, or types were added or removed before you integrate.
-* **Drop-in Authentication:** Seamlessly manage user sessions with pre-built hooks for LocalStorage, Cookies, or Next-Auth for React and Next.js developers.
+* **Drop-in Authentication:** Seamlessly manage user sessions with pre-built hooks for JWT, Cookies, or Next-Auth for React and Next.js developers.
 
 ---
 

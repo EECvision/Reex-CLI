@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { CookieAuthGuard } from "./cookie-auth/CookieAuthGuard";
-import { LocalStorageAuthGuard } from "./localstorage-auth/LocalStorageAuthGuard";
+import { JwtAuthGuard } from "./jwt-auth/JwtAuthGuard";
 import { setActiveStrategy } from "./manager";
 import { type AuthStrategy } from "./manager";
 
@@ -26,12 +26,12 @@ export const AuthProvider = ({ strategy, children }: AuthProviderProps) => {
   switch (strategy) {
     case "cookie":
       return <CookieAuthGuard>{children}</CookieAuthGuard>;
-    case "localstorage":
-      return <LocalStorageAuthGuard>{children}</LocalStorageAuthGuard>;
+    case "jwt":
+      return <JwtAuthGuard>{children}</JwtAuthGuard>;
     default:
       console.warn(
-        `Unknown auth strategy: ${strategy}. Falling back to localstorage.`,
+        `Unknown auth strategy: ${strategy}. Falling back to jwt.`,
       );
-      return <LocalStorageAuthGuard>{children}</LocalStorageAuthGuard>;
+      return <JwtAuthGuard>{children}</JwtAuthGuard>;
   }
 };

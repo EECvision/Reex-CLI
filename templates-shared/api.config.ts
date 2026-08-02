@@ -31,8 +31,8 @@ export const apiConfig: ReexConfig = {
     refreshEndpoint: `${BASE_URL}/auth/refresh`,
 
     // ---------------------------------------------------------------------------
-    // localStorage-based authentication
-    // Use these options when the `ReexProvider` auth strategy is `"localStorage"`.
+    // JWT / Bearer token authentication
+    // Use these options when the `ReexProvider` auth strategy is `"jwt"`.
     // ---------------------------------------------------------------------------
 
     // Send the refresh token to your backend to obtain a new access token.

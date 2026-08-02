@@ -4,7 +4,7 @@ import { type TokenProvider } from "../types";
 
 
 /**
- * LocalStorage Token Provider
+ * JWT Token Provider
  * - Access Token & Refresh Token: Persisted in localStorage
  *
  * Edit `api.config.ts` to customize routes and storage keys, and refresh payload.
@@ -14,15 +14,15 @@ let accessToken: string | null = null;
 let customHeaders: Record<string, string> | null = null;
 let refreshPromise: Promise<string | null> | null = null;
 
-interface LocalStorageTokenProvider extends TokenProvider {
+interface JwtTokenProvider extends TokenProvider {
   setTokens: (params: { accessToken: string; refreshToken?: string }) => void;
   clearTokens: () => void;
-    setCustomHeaders: (headers: Record<string, string>) => void;
+  setCustomHeaders: (headers: Record<string, string>) => void;
   getCustomHeaders: () => Record<string, string>;
   removeCustomHeader: (key: string) => void;
 }
 
-export const localStorageTokenProvider: LocalStorageTokenProvider = {
+export const jwtTokenProvider: JwtTokenProvider = {
   getToken: () => {
     if (accessToken) return accessToken;
     if (typeof window !== "undefined") {
