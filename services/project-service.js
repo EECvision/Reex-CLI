@@ -481,6 +481,25 @@ class ProjectService {
 
         const kind = typeNode.getKind();
 
+        
+        // Union Type: MyPayload | FormData
+        if (kind === SyntaxKind.UnionType) {
+            const unionTypes = typeNode.getTypeNodes ? typeNode.getTypeNodes() : [];
+            for (const member of unionTypes) {
+                const memberText = member.getText ? member.getText() : "";
+                if (memberText === "FormData" || memberText === "any") continue;
+                const expanded = this.expandTypeRecursively(member, sourceFile);
+                if (expanded && expanded.isObject) {
+                    return expanded;
+                }
+            }
+            for (const member of unionTypes) {
+                const expanded = this.expandTypeRecursively(member, sourceFile);
+                if (expanded) return expanded;
+            }
+            return { type: typeNode.getText ? typeNode.getText() : "" };
+        }
+
         // Object Literal: { foo: string }
         if (kind === SyntaxKind.TypeLiteral) {
             return {

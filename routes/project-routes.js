@@ -122,6 +122,17 @@ const createProjectRouter = (apiTargetDir) => {
 
 
 
+    // Sync / Regenerate Project
+    router.post('/config/sync', async (req, res) => {
+        try {
+            await generatorService.regenerate(apiTargetDir);
+            res.json({ success: true, message: "Regenerated successfully" });
+        } catch (e) {
+            console.error("[CONFIG] Sync Error:", e);
+            res.status(500).json({ error: e.message });
+        }
+    });
+
     return router;
 };
 
