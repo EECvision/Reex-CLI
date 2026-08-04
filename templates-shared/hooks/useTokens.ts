@@ -3,7 +3,7 @@ import { getActiveProvider } from "../auth-methods/manager";
 
 /**
  * Hook to manage authentication tokens securely.
- * Note: To log a user out and clear tokens safely, use the `useClearSession` hook instead.
+ * Note: To log a user out and clear tokens safely, use `clearSession` from `useAuthState` instead.
  */
 export const useTokens = () => {
   const provider = getActiveProvider();

@@ -240,7 +240,7 @@ listCmd
     console.log(`\n📦 Available Hooks in Reex Repository:\n`);
     hooks.forEach(hook => {
        const hookName = hook.replace('.ts', '');
-       const isCore = hookName === 'useAuthState' || hookName === 'useNotification' || hookName === 'useClearSession';
+       const isCore = generatorService.CORE_HOOKS?.includes(hook) || generatorService.CORE_HOOKS?.includes(`${hookName}.ts`);
        console.log(`  - ${hookName} ${isCore ? '(Core)' : ''}`);
     });
     console.log(`\n💡 Install using: reex add hook <name>`);
@@ -367,7 +367,8 @@ removeCmd
   .option("-d, --dir <path>", "Directory to manage (defaults to CWD)", process.cwd())
   .action(async (name, options) => {
     let pureName = name.replace('.ts', '');
-    if (pureName === 'useAuthState' || pureName === 'useNotification' || pureName === 'useClearSession') {
+    const isCore = generatorService.CORE_HOOKS?.includes(`${pureName}.ts`) || generatorService.CORE_HOOKS?.includes(pureName);
+    if (isCore) {
       console.error(`\n❌ Error: '${pureName}' is a core hook and cannot be removed.`);
       process.exit(1);
     }

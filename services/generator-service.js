@@ -11,7 +11,6 @@ const CORE_HOOKS = [
   'useAuthState.ts',
   'notification.ts',
   'useNotification.ts',
-  'useClearSession.ts',
   'useTokens.ts',
   'useHeaders.ts'
 ];
@@ -607,4 +606,7 @@ ${moduleNames.map((name) => `  ...${name}Api,`).join('\n')}
   }
 }
 
-module.exports = new GeneratorService();
+const generatorService = new GeneratorService();
+generatorService.CORE_HOOKS = CORE_HOOKS;
+
+module.exports = generatorService;

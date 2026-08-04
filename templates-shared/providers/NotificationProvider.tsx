@@ -70,6 +70,11 @@ export const NotificationProvider = ({
           return prev;
         }
 
+        // Drop duplicates already on screen (guards against same-render-batch bursts).
+        if (prev.some((n) => n.message === notification.message && n.type === notification.type)) {
+          return prev;
+        }
+
         const next = [...prev, notification];
 
         if (next.length <= maxNotifications) {
@@ -79,7 +84,7 @@ export const NotificationProvider = ({
         // Remove timers for notifications that are being evicted
         const removed = next.slice(0, next.length - maxNotifications);
 
-        // Defer the side-effect to keep the state updater pure!
+        // Defer timer cleanup to keep the state updater pure.
         queueMicrotask(() => {
           removed.forEach(({ id }) => {
             const timer = timers.get(id);

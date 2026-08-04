@@ -10,6 +10,7 @@ import axios, {
 import type { ApiError, TokenProvider } from "./auth-methods/types";
 import { apiConfig } from "./api.config";
 import { proxyTokenProvider } from "./auth-methods/manager";
+import { pushNotification } from "./hooks/notification";
 
 const API_TIMEOUT = 30000;
 const REFRESH_TIMEOUT = 10000;
@@ -187,58 +188,44 @@ export const createApiClient = (
         } catch (refreshError) {
           processQueue(refreshError, null);
 
-          // Dispatch logout event on refresh failure
+          // Refresh failed — signal the app to log the user out and clear the session.
           if (typeof window !== "undefined") {
             window.dispatchEvent(new Event("auth:logout"));
-
-            // Notify useNotification consumers about the auth failure
-            window.dispatchEvent(
-              new CustomEvent("api:notification", {
-                detail: {
-                  id: crypto.randomUUID(),
-                  type: "error",
-                  message:
-                    formatErrorMessage(error.response?.data) ||
-                    "Authentication failed. Please log in again.",
-                  statusCode: 401,
-                  timestamp: new Date().toISOString(),
-                },
-              }),
-            );
           }
 
-          // Return early — notification already dispatched above; don't fall through
-          // to the generic error dispatch below.
+          // Notify the user. To redirect instead of showing a toast, handle "auth:logout" in your auth guard.
+          pushNotification({
+            type: "error",
+            message:
+              formatErrorMessage((error as any).response?.data) ||
+              "Authentication failed. Please log in again.",
+            statusCode: 401,
+          });
+
+          // Return early so the generic error handler below does not also fire a notification.
           return Promise.reject(refreshError);
         } finally {
           isRefreshing = false;
         }
       } else if (error.response?.status === 401) {
+        // No token refresh configured — log the user out immediately.
         if (typeof window !== "undefined") {
           window.dispatchEvent(new Event("auth:logout"));
-
-          // Notify useNotification consumers about the auth failure
-          window.dispatchEvent(
-            new CustomEvent("api:notification", {
-              detail: {
-                id: crypto.randomUUID(),
-                type: "error",
-                message:
-                  formatErrorMessage(error.response?.data) ||
-                  "Authentication failed. Please log in again.",
-                statusCode: 401,
-                timestamp: new Date().toISOString(),
-              },
-            }),
-          );
         }
 
-        // Return early — notification already dispatched above; don't fall through
-        // to the generic error dispatch below.
+        pushNotification({
+          type: "error",
+          message:
+            formatErrorMessage(error.response?.data) ||
+            "Authentication failed. Please log in again.",
+          statusCode: 401,
+        });
+
+        // Return early so the generic error handler below does not also fire a notification.
         throw error;
       }
 
-      // Normalize error
+      // Normalize the raw Axios error into a consistent ApiError shape.
       const responseData = error.response?.data as any;
       const apiError: ApiError = {
         message:
@@ -259,20 +246,12 @@ export const createApiClient = (
         });
       }
 
-      // Dispatch notification event for useNotification consumers
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(
-          new CustomEvent("api:notification", {
-            detail: {
-              id: crypto.randomUUID(),
-              type: "error",
-              message: apiError.message,
-              statusCode: apiError.statusCode,
-              timestamp: new Date().toISOString(),
-            },
-          }),
-        );
-      }
+      // Surface the error to the user. Customize the UI in AppNotification.tsx.
+      pushNotification({
+        type: "error",
+        message: apiError.message,
+        statusCode: apiError.statusCode,
+      });
 
       throw apiError;
     },

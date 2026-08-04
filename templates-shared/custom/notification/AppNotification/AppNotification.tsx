@@ -25,10 +25,7 @@ export default AppNotification;
 
 // import { Toaster, toast } from "sonner";
 
-// import {
-//   ApiNotification,
-//   NOTIFICATION_EVENT,
-// } from "@/api-services/hooks/notification";
+// import { NOTIFICATION_EVENT, type ApiNotification } from "../../../hooks/notification"
 
 // const AppNotification = () => {
 //   useEffect(() => {

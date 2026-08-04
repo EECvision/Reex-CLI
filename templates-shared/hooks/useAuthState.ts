@@ -1,20 +1,21 @@
 // @internal — No changes needed
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { getActiveProvider } from "../auth-methods/manager";
 
 export type AuthStatus = "loading" | "authenticated" | "unauthenticated";
 
 /**
- * Hook to check the current authentication state.
- * Returns the status ("loading", "authenticated", or "unauthenticated").
+ * Hook to check authentication state and clear local sessions.
  *
  * @example
- * const { status } = useAuthState();
+ * const { status, isAuthenticated, clearSession } = useAuthState();
  * if (status === "loading") return <Loading />;
- * if (status === "unauthenticated") return <Login />;
+ * if (!isAuthenticated) return <Login />;
  */
 export const useAuthState = () => {
   const provider = getActiveProvider();
+  const queryClient = useQueryClient();
 
   const [status, setStatus] = useState<AuthStatus>("loading");
 
@@ -32,7 +33,12 @@ export const useAuthState = () => {
 
     // Listen to dispatch events to update UI instantly without refresh
     const handleLogin = () => setStatus("authenticated");
-    const handleLogout = () => setStatus("unauthenticated");
+    const handleLogout = () => {
+      provider?.clearTokens?.();
+      queryClient.cancelQueries();
+      queryClient.clear();
+      setStatus("unauthenticated");
+    };
 
     if (typeof window !== "undefined") {
       window.addEventListener("auth:login", handleLogin);
@@ -45,11 +51,27 @@ export const useAuthState = () => {
         window.removeEventListener("auth:logout", handleLogout);
       }
     };
-  }, [provider]);
+  }, [provider, queryClient]);
+
+  const clearSession = useCallback(async () => {
+    provider?.clearTokens?.();
+
+    // Clear React Query cache
+    await queryClient.cancelQueries();
+    queryClient.clear();
+
+    setStatus("unauthenticated");
+
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("auth:logout"));
+    }
+  }, [provider, queryClient]);
 
   return {
     status,
     isAuthenticated: status === "authenticated",
     isLoading: status === "loading",
+    clearSession,
   };
 };
+

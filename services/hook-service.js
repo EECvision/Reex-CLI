@@ -301,8 +301,6 @@ import {
   useQuery,
 } from "@tanstack/react-query";
 
-import { getActiveProvider } from "../auth-methods/manager";
-
 // 1. Mutation Wrapper
 export const useApiMutation = <
   TData = unknown,
@@ -336,16 +334,20 @@ export const useApiQuery = <
     "queryKey" | "queryFn"
   >,
 ): UseQueryResult<TData, TError> => {
-  const isEnabled =
-    options?.enabled !== false ? !!getActiveProvider()?.getToken?.() : false;
-
   return useQuery<TQueryFnData, TError, TData, TQueryKey>({
     queryKey,
     queryFn,
     refetchOnWindowFocus: false,
-    retry: 1,
+    // Skip retrying auth/client errors (401, 403, 404, 422) — these won't resolve on retry.
+    retry: (failureCount: number, error: unknown) => {
+      const e = error as { statusCode?: number; status?: number; response?: { status?: number } };
+      const status = e?.statusCode ?? e?.status ?? e?.response?.status;
+      if (status === 401 || status === 403 || status === 404 || status === 422) {
+        return false;
+      }
+      return failureCount < 1;
+    },
     ...options,
-    enabled: isEnabled,
   });
 };
 `;

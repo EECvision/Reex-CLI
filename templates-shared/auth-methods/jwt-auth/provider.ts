@@ -14,6 +14,20 @@ let accessToken: string | null = null;
 let customHeaders: Record<string, string> | null = null;
 let refreshPromise: Promise<string | null> | null = null;
 
+/**
+ * Decodes the JWT `exp` claim and checks whether it has passed.
+ * No library needed — JWT payloads are plain base64url-encoded JSON.
+ * Returns false for non-JWT strings so opaque tokens are never blocked.
+ */
+const isTokenExpired = (token: string): boolean => {
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    return typeof payload.exp === "number" && payload.exp * 1000 < Date.now();
+  } catch {
+    return false;
+  }
+};
+
 interface JwtTokenProvider extends TokenProvider {
   setTokens: (params: { accessToken: string; refreshToken?: string }) => void;
   clearTokens: () => void;
@@ -24,10 +38,35 @@ interface JwtTokenProvider extends TokenProvider {
 
 export const jwtTokenProvider: JwtTokenProvider = {
   getToken: () => {
-    if (accessToken) return accessToken;
-    if (typeof window !== "undefined") {
-      return localStorage.getItem(apiConfig.auth.accessTokenKey);
+    const token = accessToken ?? (
+      typeof window !== "undefined"
+        ? localStorage.getItem(apiConfig.auth.accessTokenKey)
+        : null
+    );
+
+    if (token) {
+      if (isTokenExpired(token)) {
+        accessToken = null;
+        if (typeof window !== "undefined") {
+          localStorage.removeItem(apiConfig.auth.accessTokenKey);
+          const hasRefreshToken = !!localStorage.getItem(apiConfig.auth.refreshTokenKey);
+          if (!hasRefreshToken) {
+            window.dispatchEvent(new Event("auth:logout"));
+            return null;
+          }
+        }
+      } else {
+        return token;
+      }
     }
+
+    if (typeof window !== "undefined") {
+      const storedRefreshToken = localStorage.getItem(apiConfig.auth.refreshTokenKey);
+      if (storedRefreshToken && jwtTokenProvider.refreshToken) {
+        return jwtTokenProvider.refreshToken();
+      }
+    }
+
     return null;
   },
 
@@ -141,6 +180,11 @@ export const jwtTokenProvider: JwtTokenProvider = {
         if (newRefresh) {
           localStorage.setItem(apiConfig.auth.refreshTokenKey, newRefresh);
         }
+
+        if (newAccess && typeof window !== "undefined") {
+          window.dispatchEvent(new Event("auth:login"));
+        }
+
         return accessToken;
       } catch {
         console.warn("Refresh failed, logging out...");
