@@ -154,7 +154,19 @@ class GeneratorService {
         return null;
       };
 
-      // 1. api.config.ts - User Config
+      // 1. .reex/config.ts - Internal Config Types
+      const reexDir = path.join(apiTargetDir, API_SERVICES_RELATIVE_DIR, '.reex');
+      if (!fs.existsSync(reexDir)) {
+        fs.mkdirSync(reexDir, { recursive: true });
+      }
+      const reexConfigPath = path.join(reexDir, 'config.ts');
+      const templateReexConfigPath = resolveTemplateFile(path.join('.reex', 'config.ts'));
+      if (templateReexConfigPath) {
+        fs.copyFileSync(templateReexConfigPath, reexConfigPath);
+        console.log("[Generator] Synced .reex/config.ts from template");
+      }
+
+      // 1b. api.config.ts - User Config
       if (!fs.existsSync(apiConfigPath)) {
         const templateApiConfigPath = resolveTemplateFile('api.config.ts');
         if (templateApiConfigPath) {
@@ -200,7 +212,7 @@ class GeneratorService {
 
       // 4. Regenerate Barrel File (API_SERVICES_RELATIVE_DIR/definitions/index.ts)
       const moduleNames = Object.keys(manifest).sort();
-      const barrelContent = `import { type ReexDefinition } from "../core";
+      const barrelContent = `import { type ReexDefinition } from "../.reex/config";
 ${moduleNames.map((name) => `import { ${name}Api } from "./${name}";`).join('\n')}
 
 export const api = {
@@ -427,11 +439,16 @@ ${moduleNames.map((name) => `  ...${name}Api,`).join('\n')}
       const resetFile = (filename) => {
         const tpl = resolveTemplateFile(filename);
         if (tpl) {
-          fs.copyFileSync(tpl, path.join(apiServicesDir, filename));
+          const dest = path.join(apiServicesDir, filename);
+          if (!fs.existsSync(path.dirname(dest))) {
+            fs.mkdirSync(path.dirname(dest), { recursive: true });
+          }
+          fs.copyFileSync(tpl, dest);
           console.log(`[Reset] Reset ${filename}`);
         }
-      }
+      };
 
+      resetFile(path.join('.reex', 'config.ts'));
       resetFile('api.config.ts');
       resetFile('core.ts');
       

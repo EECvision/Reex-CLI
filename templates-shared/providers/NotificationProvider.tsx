@@ -1,4 +1,5 @@
-import React, {
+// @internal — No changes needed
+import {
   type ReactNode,
   useCallback,
   useEffect,

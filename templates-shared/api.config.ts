@@ -1,7 +1,7 @@
 // @user-config — Update routes, keys, and endpoints to match your backend.
 
 import axios from "axios";
-import { type ReexConfig } from "./core";
+import { type ReexConfig } from "./.reex/config";
 
 // Replace this with your API base URL or an environment variable
 // (e.g. process.env.NEXT_PUBLIC_API_URL).

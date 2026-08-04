@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { apiClient, type ReexDefinition } from "../core";
+import { apiClient } from "../core";
+import { type ReexDefinition } from "../.reex/config";
 import { type get_list__TypeName__s } from "../types/__ModuleName__/get_list__TypeName__s";
 import { type get___ModuleNameSingular__Detail } from "../types/__ModuleName__/get___ModuleNameSingular__Detail";
 import { type post_create__TypeName__ } from "../types/__ModuleName__/post_create__TypeName__";
