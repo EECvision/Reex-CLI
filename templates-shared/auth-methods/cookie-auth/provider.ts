@@ -10,7 +10,10 @@ let refreshPromise: Promise<string | null> | null = null;
 const COOKIE_FLAG_KEY = "reex_is_cookie_auth_active";
 
 interface CookieTokenProvider extends TokenProvider {
-  setTokens: (params: { accessToken?: string; refreshToken?: string }) => void;
+  setSession: (
+    tokens?: { accessToken?: string; refreshToken?: string },
+    headers?: Record<string, string>,
+  ) => void;
   clearTokens: () => void;
   setCustomHeaders: (headers: Record<string, string>) => void;
   getCustomHeaders: () => Record<string, string>;
@@ -74,10 +77,13 @@ export const cookieTokenProvider: CookieTokenProvider = {
     }
   },
 
-  setTokens: () => {
+  setSession: (_tokens, headers) => {
     // The actual token is set by the backend via Set-Cookie headers.
     // We just set a primitive flag so the frontend knows the user is logged in.
     isCookieAuthActive = true;
+    if (headers) {
+      cookieTokenProvider.setCustomHeaders(headers);
+    }
     if (typeof window !== "undefined") {
       localStorage.setItem(COOKIE_FLAG_KEY, "true");
       window.dispatchEvent(new Event("auth:login"));

@@ -33,6 +33,15 @@ export const proxyTokenProvider: TokenProvider = {
   get refreshToken() {
     return activeTokenProvider.refreshToken;
   },
+  get setTokens() {
+    return activeTokenProvider.setTokens;
+  },
+  get setSession() {
+    return activeTokenProvider.setSession;
+  },
+  get clearTokens() {
+    return activeTokenProvider.clearTokens;
+  },
   get getCustomHeaders() {
     return activeTokenProvider.getCustomHeaders;
   },
@@ -48,13 +57,6 @@ export const proxyTokenProvider: TokenProvider = {
  * Use this function to access the active token provider from an external file.
  * This is the recommended way to get or set auth tokens after login.
  */
-export function getActiveProvider(): {
-  getToken?: () => Promise<string | null> | string | null;
-  setTokens?: (p: { accessToken: string; refreshToken?: string }) => void;
-  clearTokens?: () => void;
-  setCustomHeaders?: (headers: Record<string, string>) => void;
-  getCustomHeaders?: () => Promise<Record<string, string>> | Record<string, string>;
-  removeCustomHeader?: (key: string) => void;
-} | null {
+export function getActiveProvider(): TokenProvider | null {
   return activeTokenProvider ?? null;
 }

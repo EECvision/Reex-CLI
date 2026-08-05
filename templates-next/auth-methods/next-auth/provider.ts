@@ -12,7 +12,11 @@ let customHeaders: Record<string, string> | null = null;
 
 // TokenProvider for NextAuth.js - retrieves token from session
 interface NextAuthTokenProvider extends TokenProvider {
-    setTokens: (params: { accessToken: string; refreshToken?: string }) => void;
+    setTokens?: (tokens: { accessToken: string; refreshToken?: string }) => void;
+    setSession?: (
+        tokens?: { accessToken?: string; refreshToken?: string },
+        headers?: Record<string, string>,
+    ) => void;
     clearTokens: () => void;
     setCustomHeaders: (headers: Record<string, string>) => void;
     getCustomHeaders: () => Record<string, string>;
@@ -55,6 +59,11 @@ export const nextAuthTokenProvider: NextAuthTokenProvider = {
             console.warn(
                 "[NextAuthTokenProvider] setTokens is a no-op. NextAuth manages tokens via session.",
             );
+        }
+    },
+    setSession: (_tokens, headers) => {
+        if (headers) {
+            nextAuthTokenProvider.setCustomHeaders(headers);
         }
     },
     clearTokens: () => {

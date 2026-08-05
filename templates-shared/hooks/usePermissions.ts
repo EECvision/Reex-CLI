@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { getActiveProvider } from "../auth-methods/manager";
-import { useAuthState } from "./useAuthState";
+import { useAuthSession } from "./useAuthSession";
 
 interface PermissionsState {
   roles: string[];
@@ -74,7 +74,7 @@ const getSharedPermissions = (provider: any): Promise<PermissionsState> => {
 };
 
 export function usePermissions() {
-  const { isAuthenticated, isLoading } = useAuthState();
+  const { isAuthenticated, isLoading } = useAuthSession();
 
   // If we already have cached permissions, initialize synchronously to avoid flicker
   const [state, setState] = useState<PermissionsState>(

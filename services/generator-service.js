@@ -8,10 +8,9 @@ const hookService = require('./hook-service');
 const sseService = require('./sse-service');
 
 const CORE_HOOKS = [
-  'useAuthState.ts',
+  'useAuthSession.ts',
   'notification.ts',
   'useNotification.ts',
-  'useTokens.ts',
   'useHeaders.ts'
 ];
 
@@ -507,7 +506,7 @@ ${moduleNames.map((name) => `  ...${name}Api,`).join('\n')}
       return;
     }
 
-    // Normalizing target (e.g. src\api-services\hooks\useAuthState.ts -> hooks/useAuthState.ts)
+    // Normalizing target (e.g. src\api-services\hooks\useAuthSession.ts -> hooks/useAuthSession.ts)
     let normalizedTarget = target.replace(/\\/g, '/');
     normalizedTarget = normalizedTarget.replace(/^(src\/)?api-services\//, '');
 
@@ -562,7 +561,7 @@ ${moduleNames.map((name) => `  ...${name}Api,`).join('\n')}
 
     if (matches.length > 1) {
        const paths = matches.map(m => m.relativePath).join(', ');
-       throw new Error(`Target "${target}" is ambiguous. Found multiple matches: ${paths}. Please provide a more specific path (e.g. "hooks/useAuthState.ts").`);
+       throw new Error(`Target "${target}" is ambiguous. Found multiple matches: ${paths}. Please provide a more specific path (e.g. "hooks/useAuthSession.ts").`);
     }
 
     const match = matches[0];

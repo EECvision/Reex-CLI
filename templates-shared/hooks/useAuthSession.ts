@@ -6,14 +6,14 @@ import { getActiveProvider } from "../auth-methods/manager";
 export type AuthStatus = "loading" | "authenticated" | "unauthenticated";
 
 /**
- * Hook to check authentication state and clear local sessions.
+ * Hook to manage authentication state, active sessions, and logout teardown.
  *
  * @example
- * const { status, isAuthenticated, clearSession } = useAuthState();
+ * const { status, isAuthenticated, setSession, clearSession } = useAuthSession();
  * if (status === "loading") return <Loading />;
  * if (!isAuthenticated) return <Login />;
  */
-export const useAuthState = () => {
+export const useAuthSession = () => {
   const provider = getActiveProvider();
   const queryClient = useQueryClient();
 
@@ -53,6 +53,29 @@ export const useAuthState = () => {
     };
   }, [provider, queryClient]);
 
+  const getToken = useCallback(
+    () => provider?.getToken?.() ?? null,
+    [provider],
+  );
+
+  const setSession = useCallback(
+    (
+      tokens?: { accessToken?: string; refreshToken?: string },
+      headers?: Record<string, string>,
+    ) => {
+      if (provider?.setSession) {
+        provider.setSession(tokens, headers);
+      } else if (tokens?.accessToken && provider?.setTokens) {
+        provider.setTokens(tokens as { accessToken: string; refreshToken?: string });
+        if (headers && provider?.setCustomHeaders) {
+          provider.setCustomHeaders(headers);
+        }
+      }
+      setStatus("authenticated");
+    },
+    [provider],
+  );
+
   const clearSession = useCallback(async () => {
     provider?.clearTokens?.();
 
@@ -71,7 +94,8 @@ export const useAuthState = () => {
     status,
     isAuthenticated: status === "authenticated",
     isLoading: status === "loading",
+    getToken,
+    setSession,
     clearSession,
   };
 };
-

@@ -29,7 +29,11 @@ const isTokenExpired = (token: string): boolean => {
 };
 
 interface JwtTokenProvider extends TokenProvider {
-  setTokens: (params: { accessToken: string; refreshToken?: string }) => void;
+  setTokens: (tokens: { accessToken: string; refreshToken?: string }) => void;
+  setSession: (
+    tokens?: { accessToken?: string; refreshToken?: string },
+    headers?: Record<string, string>,
+  ) => void;
   clearTokens: () => void;
   setCustomHeaders: (headers: Record<string, string>) => void;
   getCustomHeaders: () => Record<string, string>;
@@ -110,17 +114,32 @@ export const jwtTokenProvider: JwtTokenProvider = {
     }
   },
 
-  // Called on login/signup success
-  setTokens: ({ accessToken: newAccessToken, refreshToken }) => {
+  // Called on login/signup success with raw tokens
+  setTokens: (tokens) => {
+    const newAccessToken = tokens.accessToken;
+    const refreshToken = tokens.refreshToken;
     accessToken = newAccessToken;
     if (typeof window !== "undefined") {
       if (refreshToken) {
         localStorage.setItem(apiConfig.auth.refreshTokenKey, refreshToken);
         localStorage.removeItem(apiConfig.auth.accessTokenKey);
-      } else {
+      } else if (newAccessToken) {
         localStorage.setItem(apiConfig.auth.accessTokenKey, newAccessToken);
         localStorage.removeItem(apiConfig.auth.refreshTokenKey);
       }
+      window.dispatchEvent(new Event("auth:login"));
+    }
+  },
+
+  // Called on login with tokens and optional custom headers
+  setSession: (tokens, headers) => {
+    if (tokens?.accessToken) {
+      jwtTokenProvider.setTokens(tokens as { accessToken: string; refreshToken?: string });
+    }
+    if (headers) {
+      jwtTokenProvider.setCustomHeaders(headers);
+    }
+    if (typeof window !== "undefined" && !tokens?.accessToken) {
       window.dispatchEvent(new Event("auth:login"));
     }
   },

@@ -25,8 +25,14 @@ export interface TokenProvider {
   /** Remove a specific custom header */
   removeCustomHeader?: (key: string) => void;
 
-  /** Set new auth tokens (called on login/signup) */
+  /** Set new auth tokens (called on login/signup for token-based auth) */
   setTokens?: (tokens: { accessToken: string; refreshToken?: string }) => void;
+
+  /** Activate or set session on login (handles tokens, cookie-based sessions, and optional headers) */
+  setSession?: (
+    tokens?: { accessToken?: string; refreshToken?: string },
+    headers?: Record<string, string>,
+  ) => void;
 
   /** Clear all auth tokens (called on logout) */
   clearTokens?: () => void;
