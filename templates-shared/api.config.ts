@@ -20,7 +20,7 @@ export const apiConfig: ReexConfig = {
   //   process.env.NODE_ENV === "development"
   // or
   //   import.meta.env.DEV
-  enableApiLogging: true,
+  enableApiLogging: false,
 
   auth: {
     // ---------------------------------------------------------------------------
