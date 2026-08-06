@@ -101,6 +101,10 @@ export const cookieTokenProvider: CookieTokenProvider = {
   },
 
   refreshToken: async () => {
+    if (typeof window !== "undefined" && localStorage.getItem(COOKIE_FLAG_KEY) !== "true") {
+      return null;
+    }
+
     if (refreshPromise) {
       return refreshPromise;
     }

@@ -193,7 +193,15 @@ export const jwtTokenProvider: JwtTokenProvider = {
 
         const extracted = apiConfig.auth.extractTokens(responseData);
 
-        const { accessToken: newAccess = null, refreshToken: newRefresh } = extracted;
+        if (!extracted?.accessToken && !extracted?.refreshToken) {
+          console.error(
+            "\\n[Reex Auth Error] 🛑 Token extraction failed during refresh.\\n" +
+            "Both 'accessToken' and 'refreshToken' are empty.\\n" +
+            "Please update the `extractTokens` function in your `api.config.ts` so it correctly maps to your backend's response structure.\\n"
+          );
+        }
+
+        const { accessToken: newAccess = null, refreshToken: newRefresh } = extracted || {};
         accessToken = newAccess;
 
         if (newRefresh) {
