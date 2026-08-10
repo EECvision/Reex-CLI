@@ -266,7 +266,7 @@ ${hooks.join("\n\n")}
     onSuccess: (data, variables, context) => {
       if (options?.invalidate !== false) {
         ${isDelete ? `// Automatically remove detail queries matching these exact variables to prevent 404 refetches
-        if (variables) {
+        if (variables !== undefined) {
           queryClient.removeQueries({
             predicate: (query) => {
               return (
