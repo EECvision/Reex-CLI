@@ -17,6 +17,7 @@ export interface ReexConfig {
   unwrapResponseData: boolean;
   enableApiLogging: boolean;
   auth: {
+    loginRoute?: string;
     refreshEndpoint: string;
     accessTokenKey: string;
     refreshTokenKey: string;

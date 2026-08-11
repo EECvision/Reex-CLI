@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { getActiveProvider } from "../auth-methods/manager";
+import { apiConfig } from "../api.config";
 
 export type AuthStatus = "loading" | "authenticated" | "unauthenticated";
 
@@ -38,6 +39,11 @@ export const useAuthSession = () => {
       queryClient.cancelQueries();
       queryClient.clear();
       setStatus("unauthenticated");
+
+      if (typeof window !== "undefined") {
+        const route = apiConfig.auth?.loginRoute || window.origin;
+        window.location.href = route;
+      }
     };
 
     if (typeof window !== "undefined") {
@@ -87,6 +93,8 @@ export const useAuthSession = () => {
 
     if (typeof window !== "undefined") {
       window.dispatchEvent(new Event("auth:logout"));
+      const route = apiConfig.auth?.loginRoute || window.origin;
+      window.location.href = route;
     }
   }, [provider, queryClient]);
 

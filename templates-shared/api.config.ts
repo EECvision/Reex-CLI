@@ -27,6 +27,10 @@ export const apiConfig: ReexConfig = {
     // General authentication configuration
     // ---------------------------------------------------------------------------
 
+    // The route users will be redirected to when logged out.
+    // If left undefined, it defaults to the application root (window.origin).
+    loginRoute: "/login",
+
     // Refresh token endpoint. Update this to match your backend.
     refreshEndpoint: `${BASE_URL}/auth/refresh`,
 
