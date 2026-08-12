@@ -481,7 +481,15 @@ class ProjectService {
 
         const kind = typeNode.getKind();
 
-        
+        if (kind === SyntaxKind.ArrayType) {
+            const elementType = typeNode.getElementTypeNode();
+            const nested = this.expandTypeRecursively(elementType, sourceFile);
+            if (nested) {
+                return { ...nested, type: typeNode.getText() };
+            }
+            return null;
+        }
+
         // Union Type: MyPayload | FormData
         if (kind === SyntaxKind.UnionType) {
             const unionTypes = typeNode.getTypeNodes ? typeNode.getTypeNodes() : [];
@@ -526,6 +534,15 @@ class ProjectService {
         // Type Reference: MyInterface
         if (kind === SyntaxKind.TypeReference) {
             const typeName = typeNode.getTypeName().getText();
+
+            if (typeName === "Array" && typeNode.getTypeArguments().length > 0) {
+                const elementType = typeNode.getTypeArguments()[0];
+                const nested = this.expandTypeRecursively(elementType, sourceFile);
+                if (nested) {
+                    return { ...nested, type: typeNode.getText() };
+                }
+                return null;
+            }
 
             // Find declaration in the file
             const declaration =
