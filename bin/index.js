@@ -61,7 +61,7 @@ program
       process.env.API_TARGET_DIR = targetDir;
       process.env.PORT = finalPort;
       process.env.CORS_ORIGIN =
-        "https://reex-api-builder.toolshq.app,http://localhost:5173,http://localhost:3000,http://localhost:4000";
+        "https://studio.reex-api.dev,http://localhost:5173,http://localhost:3000,http://localhost:4000";
 
       const fs = require('fs');
       const apiServicesDir = fs.existsSync(path.join(targetDir, "src"))
@@ -89,7 +89,7 @@ program
       await initialGenPromise;
 
       // Construct the UI URL using the final port
-      const clientUrl = `https://reex-api-builder.toolshq.app/?localPort=${finalPort}`;
+      const clientUrl = `https://studio.reex-api.dev/?localPort=${finalPort}`;
 
       if (options.open !== false) {
         console.log(`\n🌐 Server is ready!`);

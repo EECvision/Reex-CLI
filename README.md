@@ -16,7 +16,7 @@ Reex API Builder is an intelligent API client built to bridge the gap between ba
 ### 1. The Web App (For Everyone)
 You don't need to install anything to start testing APIs, managing collections, or collaborating. 
 
-👉 **[Open Reex API Builder in your browser](https://reex-api-builder.toolshq.app/)**
+👉 **[Open Reex API Builder in your browser](https://studio.reex-api.dev/)**
 
 ### 2. Code Generation (For Frontend Developers)
 If you are a frontend developer and want to instantly transform your API collections into tested REST API code, React Query hooks, and TypeScript interfaces, you can connect the web app to your local project using our CLI.
@@ -54,4 +54,4 @@ reex reset
 ## 📖 Documentation
 
 Want to dive deeper into advanced configurations and features? 
-Check out our **[Full Documentation](https://reex-api-builder.toolshq.app/docs)**.
+Check out our **[Full Documentation](https://docs.reex-api.dev)**.
