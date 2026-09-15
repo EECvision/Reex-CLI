@@ -1,18 +1,24 @@
 {
     "name": "reex-cli",
     "version": "7.3.2",
-    "description": "CLI tool for Reex API Builder - Generate TypeScript types and React Query hooks from OpenAPI specs",
+    "description": "CLI for Reex API, the React framework for API integration. Generate TypeScript API clients and TanStack Query hooks from OpenAPI and Postman collections.",
     "main": "server.js",
     "bin": {
         "reex": "./bin/index.js"
     },
     "scripts": {
         "start": "node bin/index.js",
-        "test": "node --test tests/"
+        "test": "node --test tests/*.test.js"
     },
     "keywords": [
         "reex",
         "reex-cli",
+        "reex-api",
+        "react",
+        "react-framework",
+        "api-integration",
+        "tanstack-query",
+        "postman",
         "reex-api-builder",
         "api-builder",
         "api",
@@ -27,7 +33,7 @@
     ],
     "author": "Ezeka Emmanuel <ezekaemmanuel1710@gmail.com>",
     "license": "MIT",
-    "homepage": "https://reex-api.dev",
+    "homepage": "https://www.reex-api.dev",
     "repository": {
         "type": "git",
         "url": "git+https://github.com/EECvision/Reex-api-bridge.git"

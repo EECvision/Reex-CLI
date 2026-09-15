@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "productName": "Reex",
+  "searchName": "Reex API",
+  "positioning": "The React framework for API integration",
+  "origins": {
+    "marketing": "https://www.reex-api.dev",
+    "studio": "https://studio.reex-api.dev",
+    "docs": "https://docs.reex-api.dev"
+  },
+  "sites": {
+    "marketing": {
+      "name": "Reex API",
+      "alternateNames": [
+        "Reex",
+        "reex-api.dev"
+      ]
+    },
+    "studio": {
+      "name": "Reex API Studio",
+      "alternateNames": [
+        "Reex Studio",
+        "Reex API Builder"
+      ]
+    },
+    "docs": {
+      "name": "Reex API Docs",
+      "alternateNames": [
+        "Reex Docs",
+        "Reex API Builder Documentation"
+      ]
+    }
+  },
+  "entities": {
+    "product": "https://www.reex-api.dev/#software",
+    "marketingWebsite": "https://www.reex-api.dev/#website",
+    "studioWebsite": "https://studio.reex-api.dev/#website",
+    "studioApplication": "https://studio.reex-api.dev/#application",
+    "docsWebsite": "https://docs.reex-api.dev/#website"
+  },
+  "package": {
+    "name": "reex-cli",
+    "command": "reex",
+    "url": "https://www.npmjs.com/package/reex-cli",
+    "repository": "https://github.com/EECvision/Reex-api-bridge"
+  }
+}

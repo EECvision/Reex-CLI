@@ -1,25 +1,29 @@
-# Reex API Builder (`reex-cli`)
+# Reex API CLI (`reex-cli`)
 
 [![npm version](https://img.shields.io/npm/v/reex-cli.svg?style=flat-square)](https://www.npmjs.com/package/reex-cli)
 [![npm downloads](https://img.shields.io/npm/dm/reex-cli.svg?style=flat-square)](https://www.npmjs.com/package/reex-cli)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT)
 [![GitHub Repository](https://img.shields.io/badge/GitHub-EECvision%2FReex--api--bridge-blue?style=flat-square&logo=github)](https://github.com/EECvision/Reex-api-bridge)
 
-Reex API Builder is an intelligent API client built to bridge the gap between backend and frontend teams. It provides a robust, standardized environment for developers to test APIs and manage collections, while being meticulously designed to eliminate frontend integration boilerplate. 
+**Reex is the React framework for API integration.** `reex-cli` connects your local codebase to Reex API Studio to generate and sync production-ready typed API services, TanStack Query hooks, and auth providers directly inside your React and Next.js applications.
 
-**✨ The magic happens in your browser. No installation required to start testing APIs.** Whether you are a backend developer testing endpoints or a frontend developer generating integration code, you can jump right in using the web app or install the npm package [`reex-cli`](https://www.npmjs.com/package/reex-cli).
+* **🌐 [Official Website](https://www.reex-api.dev)** — The React Framework for API Integration
+* **⚡ [Reex API Studio](https://studio.reex-api.dev/)** — Web application for testing APIs and managing collections
+* **📖 [Documentation](https://docs.reex-api.dev/)** — Complete guides, CLI usage, and tutorials
+
+**✨ The magic happens in your browser and your local terminal.** Whether you are testing endpoints or generating type-safe React Query integration code, you can jump right in using [Reex API Studio](https://studio.reex-api.dev/) or install the npm package [`reex-cli`](https://www.npmjs.com/package/reex-cli).
 
 ---
 
 ## 🚀 Quick Start
 
-### 1. The Web App (For Everyone)
+### 1. The Web App (Reex API Studio)
 You don't need to install anything to start testing APIs, managing collections, or collaborating. 
 
-👉 **[Open Reex API Builder in your browser](https://studio.reex-api.dev/)**
+👉 **[Open Reex API Studio in your browser](https://studio.reex-api.dev/)**
 
 ### 2. Code Generation (For Frontend Developers)
-If you are a frontend developer and want to instantly transform your API collections into tested REST API code, React Query hooks, and TypeScript interfaces, you can connect the web app to your local project using our CLI.
+If you are a frontend developer and want to instantly transform your API collections into tested REST API code, React Query hooks, and TypeScript interfaces, you can connect the web app to your local project using the Reex CLI.
 
 **Step A: Install the CLI Globally**
 ```bash
@@ -51,7 +55,8 @@ reex reset
 
 ---
 
-## 📖 Documentation
+## 📖 Documentation & Links
 
-Want to dive deeper into advanced configurations and features? 
-Check out our **[Full Documentation](https://docs.reex-api.dev)**.
+* 📚 **[Full Documentation](https://docs.reex-api.dev)**: Advanced configurations, dev mode, and architecture
+* 🌐 **[Reex API Marketing Site](https://www.reex-api.dev)**: Overview and features
+* ⚡ **[Reex API Studio](https://studio.reex-api.dev)**: Test endpoints and generate hooks online
