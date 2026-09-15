@@ -1,6 +1,6 @@
 {
     "name": "reex-cli",
-    "version": "7.3.2",
+    "version": "7.3.3",
     "description": "CLI for Reex API, the React framework for API integration. Generate TypeScript API clients and TanStack Query hooks from OpenAPI and Postman collections.",
     "main": "server.js",
     "bin": {
