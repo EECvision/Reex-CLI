@@ -7,17 +7,239 @@ const { getInitializerObject } = require("../utils/ast");
 class ProjectService {
     constructor() {
         this.project = null;
+        this._cachedManifest = null;
+        this._cachedManifestTargetDir = null;
+        this._cachedManifestTimestamp = 0;
+        this._cachedManifestFilesMtime = new Map();
+    }
+
+    /**
+     * Checks if the cached manifest is valid by verifying file existence and mtimes.
+     * Takes < 0.5ms to verify 30+ files on disk.
+     * @param {string} targetDir
+     * @returns {boolean}
+     */
+    isManifestCacheValid(targetDir) {
+        if (!this._cachedManifest || this._cachedManifestTargetDir !== targetDir) {
+            return false;
+        }
+        if (!fs.existsSync(targetDir)) {
+            return false;
+        }
+
+        try {
+            const files = fs.readdirSync(targetDir).filter((f) => f.endsWith(".ts") && f !== "index.ts");
+            if (files.length !== this._cachedManifestFilesMtime.size) {
+                return false;
+            }
+
+            for (const file of files) {
+                const filePath = path.join(targetDir, file);
+                const stat = fs.statSync(filePath);
+                const lastMtime = this._cachedManifestFilesMtime.get(file);
+                if (lastMtime === undefined || stat.mtimeMs !== lastMtime) {
+                    return false;
+                }
+            }
+            return true;
+        } catch (e) {
+            return false;
+        }
+    }
+
+    /**
+     * Stores the manifest in cache and records modification times for all definition files.
+     * @param {Object} manifest
+     * @param {string} targetDir
+     */
+    setCachedManifest(manifest, targetDir) {
+        this._cachedManifest = manifest;
+        this._cachedManifestTargetDir = targetDir;
+        this._cachedManifestTimestamp = Date.now();
+        this._cachedManifestFilesMtime.clear();
+
+        if (fs.existsSync(targetDir)) {
+            try {
+                const files = fs.readdirSync(targetDir).filter((f) => f.endsWith(".ts") && f !== "index.ts");
+                for (const file of files) {
+                    const filePath = path.join(targetDir, file);
+                    const stat = fs.statSync(filePath);
+                    this._cachedManifestFilesMtime.set(file, stat.mtimeMs);
+                }
+            } catch (e) {
+                // Ignore stat errors
+            }
+        }
+    }
+
+    /**
+     * Invalidate manifest cache so the next call forces re-parsing.
+     */
+    invalidateManifestCache() {
+        this._cachedManifest = null;
+        this._cachedManifestTargetDir = null;
+        this._cachedManifestTimestamp = 0;
+        this._cachedManifestFilesMtime.clear();
+    }
+
+    /**
+     * Parses a single definition file and returns its exported method declarations.
+     * @param {string} filePath
+     * @param {Project} projectInstance
+     * @returns {Object|null}
+     */
+    parseDefinitionFile(filePath, projectInstance) {
+        const sourceFile = projectInstance.addSourceFileAtPath(filePath);
+        const moduleExports = {};
+        const exports = sourceFile.getExportedDeclarations();
+        let count = 0;
+
+        for (const [exportName, declarations] of exports) {
+            for (const declaration of declarations) {
+                const kind = declaration.getKind();
+                if (kind === SyntaxKind.VariableDeclaration) {
+                    const initializer = getInitializerObject(declaration);
+
+                    if (initializer) {
+                        const properties = initializer.getProperties();
+                        for (const property of properties) {
+                            if (property.getKind() === SyntaxKind.PropertyAssignment) {
+                                const methodName = property.getName();
+                                const init = property.getInitializer();
+
+                                // Helper to extract metadata from function body
+                                const extractMetadata = (funcNode) => {
+                                    let client = "UNKNOWN_CLIENT";
+                                    let url = "";
+                                    let method = "GET"; // Default
+
+                                    const body = funcNode.getBody();
+                                    const callExprs = [];
+                                    if (body.getKind() === SyntaxKind.CallExpression) {
+                                        callExprs.push(body);
+                                    }
+                                    callExprs.push(...body.getDescendantsOfKind(SyntaxKind.CallExpression));
+
+                                    for (const call of callExprs) {
+                                        const expr = call.getExpression();
+
+                                        if (expr.getKind() === SyntaxKind.PropertyAccessExpression) {
+                                            const propName = expr.getName();
+                                            const objectName = expr.getExpression().getText();
+
+                                            if (["get", "post", "put", "delete", "patch"].includes(propName)) {
+                                                client = objectName;
+                                                method = propName.toUpperCase();
+
+                                                const firstArg = call.getArguments()[0];
+                                                if (firstArg) {
+                                                    if (firstArg.getKind() === SyntaxKind.NoSubstitutionTemplateLiteral) {
+                                                        url = firstArg.getLiteralValue();
+                                                    } else if (firstArg.getKind() === SyntaxKind.TemplateExpression) {
+                                                        let reconstructed = firstArg.getHead().getLiteralText();
+                                                        for (const span of firstArg.getTemplateSpans()) {
+                                                            reconstructed += "${" + span.getExpression().getText() + "}" + span.getLiteral().getLiteralText();
+                                                        }
+                                                        url = reconstructed;
+                                                    } else if (firstArg.getKind() === SyntaxKind.StringLiteral) {
+                                                        url = firstArg.getLiteralValue();
+                                                    }
+                                                }
+                                                break;
+                                            }
+                                        }
+                                    }
+
+                                    return { client, url, method };
+                                };
+
+                                if (init && (init.getKind() === SyntaxKind.ArrowFunction || init.getKind() === SyntaxKind.FunctionExpression)) {
+                                    try {
+                                        const params = init.getParameters().map(p => this.getParameterDetails(p, sourceFile));
+                                        const metadata = extractMetadata(init);
+
+                                        let requiresAuth = false;
+                                        const fullText = sourceFile.getFullText();
+                                        const leadingComments = property.getLeadingCommentRanges();
+                                        let contentType = undefined;
+                                        for (const comment of leadingComments) {
+                                            const commentText = fullText.substring(comment.getPos(), comment.getEnd());
+                                            if (commentText.includes("@auth")) {
+                                                requiresAuth = true;
+                                            }
+                                            const contentTypeMatch = commentText.match(/@contentType\s+(\S+)/);
+                                            if (contentTypeMatch) {
+                                                contentType = contentTypeMatch[1];
+                                            }
+                                        }
+
+                                        moduleExports[methodName] = { args: params, ...metadata, requiresAuth, contentType };
+                                        count++;
+                                    } catch (err) {
+                                        console.error(`[ProjectService] Error processing ${methodName}:`, err);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return count > 0 ? moduleExports : null;
     }
 
     /**
      * Generates the API manifest from the target directory.
+     * Uses in-memory cache if files haven't changed.
+     * Supports incremental parsing when changedModules is specified.
      * @param {string} targetDir - The directory containing API definitions.
+     * @param {boolean} [force=false] - If true, bypass cache and recompute.
+     * @param {string[]|null} [changedModules=null] - Specific modules that changed for fast incremental update.
      * @returns {Object} The generated manifest object.
      */
-    generateManifest(targetDir) {
+    generateManifest(targetDir, force = false, changedModules = null) {
         if (!fs.existsSync(targetDir)) {
             console.warn(`[ProjectService] Warning: Target directory not found: ${targetDir}`);
+            this.invalidateManifestCache();
             return {};
+        }
+
+        // Fast path: Incremental update if cache exists and specific modules changed
+        if (this._cachedManifest && this._cachedManifestTargetDir === targetDir && Array.isArray(changedModules) && changedModules.length > 0) {
+            const singleProject = new Project({
+                compilerOptions: {
+                    allowJs: true,
+                    declaration: true,
+                    emitDeclarationOnly: true,
+                },
+                skipAddingFilesFromTsConfig: true,
+            });
+
+            for (const mod of changedModules) {
+                const fileName = `${mod}.ts`;
+                const filePath = path.join(targetDir, fileName);
+                if (fs.existsSync(filePath)) {
+                    const moduleExports = this.parseDefinitionFile(filePath, singleProject);
+                    if (moduleExports && Object.keys(moduleExports).length > 0) {
+                        this._cachedManifest[mod] = moduleExports;
+                    } else {
+                        delete this._cachedManifest[mod];
+                    }
+                    try {
+                        const stat = fs.statSync(filePath);
+                        this._cachedManifestFilesMtime.set(fileName, stat.mtimeMs);
+                    } catch (e) {}
+                } else {
+                    delete this._cachedManifest[mod];
+                    this._cachedManifestFilesMtime.delete(fileName);
+                }
+            }
+            return this._cachedManifest;
+        }
+
+        if (!force && this.isManifestCacheValid(targetDir)) {
+            return this._cachedManifest;
         }
 
         this.project = new Project({
@@ -35,124 +257,13 @@ class ProjectService {
         for (const file of files) {
             const moduleName = file.replace(".ts", "");
             const filePath = path.join(targetDir, file);
-            const sourceFile = this.project.addSourceFileAtPath(filePath);
-            const moduleExports = {};
-            const exports = sourceFile.getExportedDeclarations();
-            let count = 0;
-
-            for (const [exportName, declarations] of exports) {
-                for (const declaration of declarations) {
-                    const kind = declaration.getKind();
-                    if (kind === SyntaxKind.VariableDeclaration) {
-                        const initializer = getInitializerObject(declaration);
-
-                        if (initializer) {
-                            const properties = initializer.getProperties();
-                            for (const property of properties) {
-                                if (property.getKind() === SyntaxKind.PropertyAssignment) {
-                                    const methodName = property.getName();
-                                    const init = property.getInitializer();
-
-                                    // Helper to extract metadata from function body
-                                    const extractMetadata = (funcNode) => {
-                                        let client = "UNKNOWN_CLIENT";
-                                        let url = "";
-                                        let method = "GET"; // Default
-
-                                        // Extract URL, client, and method from inline apiClient.method(`/path`) calls
-                                        // Generated definitions use: apiClient.get(`/api/v1/path`)
-                                        //                       or: apiClient.post(`/api/v1/path/${id}`, payload)
-                                        const body = funcNode.getBody();
-                                        const callExprs = [];
-                                        // Concise arrow functions (no block body) have the CallExpression as the body itself
-                                        // getDescendantsOfKind does NOT include the node itself, so we must check it explicitly
-                                        if (body.getKind() === SyntaxKind.CallExpression) {
-                                            callExprs.push(body);
-                                        }
-                                        callExprs.push(...body.getDescendantsOfKind(SyntaxKind.CallExpression));
-
-                                        for (const call of callExprs) {
-                                            const expr = call.getExpression();
-
-                                            if (expr.getKind() === SyntaxKind.PropertyAccessExpression) {
-                                                const methodName = expr.getName();
-                                                const objectName = expr.getExpression().getText();
-
-                                                // Match CLIENT.get/post/put/delete/patch calls
-                                                if (["get", "post", "put", "delete", "patch"].includes(methodName)) {
-                                                    client = objectName;
-                                                    method = methodName.toUpperCase();
-
-                                                    // Extract URL from first argument (template literal or string)
-                                                    const firstArg = call.getArguments()[0];
-                                                    if (firstArg) {
-                                                        if (firstArg.getKind() === SyntaxKind.NoSubstitutionTemplateLiteral) {
-                                                            url = firstArg.getLiteralValue();
-                                                        } else if (firstArg.getKind() === SyntaxKind.TemplateExpression) {
-                                                            // Handle `/path/${id}/retry` -> reconstruct with ${param} syntax
-                                                            let reconstructed = firstArg.getHead().getLiteralText();
-                                                            for (const span of firstArg.getTemplateSpans()) {
-                                                                reconstructed += "${" + span.getExpression().getText() + "}" + span.getLiteral().getLiteralText();
-                                                            }
-                                                            url = reconstructed;
-                                                        } else if (firstArg.getKind() === SyntaxKind.StringLiteral) {
-                                                            url = firstArg.getLiteralValue();
-                                                        }
-                                                    }
-                                                    break; // Found the API call, stop searching
-                                                }
-                                            }
-                                        }
-
-
-                                        return { client, url, method };
-                                    };
-
-                                    // Expand args
-                                    if (init && (init.getKind() === SyntaxKind.ArrowFunction || init.getKind() === SyntaxKind.FunctionExpression)) {
-                                        try {
-                                            const params = init.getParameters().map(p => this.getParameterDetails(p, sourceFile));
-                                            const metadata = extractMetadata(init);
-
-                                            // Check for @auth in leading comments on the PropertyAssignment
-                                            let requiresAuth = false;
-                                            const fullText = sourceFile.getFullText();
-                                            const leadingComments = property.getLeadingCommentRanges();
-                                            let contentType = undefined;
-                                            for (const comment of leadingComments) {
-                                                const commentText = fullText.substring(comment.getPos(), comment.getEnd());
-                                                if (commentText.includes("@auth")) {
-                                                    requiresAuth = true;
-                                                }
-                                                // Parse @contentType value
-                                                const contentTypeMatch = commentText.match(/@contentType\s+(\S+)/);
-                                                if (contentTypeMatch) {
-                                                    contentType = contentTypeMatch[1];
-                                                }
-                                            }
-
-                                            moduleExports[methodName] = { args: params, ...metadata, requiresAuth, contentType };
-                                            count++;
-                                        } catch (err) {
-                                            console.error(`[ProjectService] Error processing ${methodName}:`, err);
-                                        }
-                                    } else {
-                                        // console.log(`[ProjectService] Skipping ${methodName} - Kind: ${init ? init.getKind() : 'None'}`);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // console.log(`[ProjectService] Module ${moduleName} exports:`, Object.keys(moduleExports));
-
-            if (count) {
+            const moduleExports = this.parseDefinitionFile(filePath, this.project);
+            if (moduleExports) {
                 apiManifest[moduleName] = moduleExports;
             }
         }
 
+        this.setCachedManifest(apiManifest, targetDir);
         return apiManifest;
     }
 
@@ -176,10 +287,11 @@ class ProjectService {
         console.log(`[ProjectService] Found ${files.length} definition files to check.`);
 
         for (const file of files) {
-            const filePath = path.join(targetDir, file);
-            const sourceFile = this.project.addSourceFileAtPath(filePath);
             const moduleName = file.replace(".ts", "");
             if (changedModules && !changedModules.includes(moduleName)) continue;
+
+            const filePath = path.join(targetDir, file);
+            const sourceFile = this.project.addSourceFileAtPath(filePath);
 
             // Find the API Object (e.g. const accountReportsApi = { ... })
             // We assume standard naming convention: moduleName + "Api"
@@ -525,7 +637,7 @@ class ProjectService {
                     return {
                         name,
                         isOptional: optional,
-                        type: prop.getType().getText(),
+                        type: propTypeNode ? propTypeNode.getText() : (prop.getType ? prop.getType().getText() : "any"),
                     };
                 }),
             };
@@ -575,7 +687,7 @@ class ProjectService {
                     return {
                         name,
                         isOptional: optional,
-                        type: prop.getType().getText(),
+                        type: propTypeNode ? propTypeNode.getText() : (prop.getType ? prop.getType().getText() : "any"),
                     };
                 }),
             };

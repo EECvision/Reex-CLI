@@ -102,4 +102,39 @@ test('Project Service Tests', async (t) => {
         assert.strictEqual(profileArg.properties[1].isObject, true);
         assert.strictEqual(profileArg.properties[1].properties[0].name, 'street');
     });
+
+    await t.test('generateManifest caches result and invalidates when files change', async () => {
+        const cacheTestDir = fs.mkdtempSync(path.join(os.tmpdir(), 'manifest-cache-test-'));
+        t.after(() => fs.rmSync(cacheTestDir, { recursive: true, force: true }));
+
+        const file1 = path.join(cacheTestDir, 'moduleA.ts');
+        fs.writeFileSync(file1, `
+            export const moduleA = {
+                get_test: () => true
+            };
+        `);
+
+        // First call - cold
+        const firstManifest = projectService.generateManifest(cacheTestDir);
+        assert.ok(firstManifest.moduleA);
+
+        // Second call - should return cached instance immediately
+        const secondManifest = projectService.generateManifest(cacheTestDir);
+        assert.strictEqual(firstManifest, secondManifest, 'Should return the identical cached reference');
+
+        // Modify file on disk with updated mtime
+        await new Promise(r => setTimeout(r, 50));
+        fs.appendFileSync(file1, `\n// modified\n`);
+        const now = new Date();
+        fs.utimesSync(file1, now, now);
+
+        // Cache should automatically detect modification and return new manifest
+        const thirdManifest = projectService.generateManifest(cacheTestDir);
+        assert.notStrictEqual(secondManifest, thirdManifest, 'Should recompute when file mtime changes');
+
+        // Manual invalidation test
+        projectService.invalidateManifestCache();
+        const fourthManifest = projectService.generateManifest(cacheTestDir);
+        assert.notStrictEqual(thirdManifest, fourthManifest, 'Should recompute after invalidateManifestCache');
+    });
 });

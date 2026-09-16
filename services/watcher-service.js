@@ -2,6 +2,7 @@ const chokidar = require('chokidar');
 const path = require('path');
 const { API_SERVICES_RELATIVE_DIR } = require('../paths');
 const generatorService = require('./generator-service');
+const projectService = require('./project-service');
 const sseService = require('./sse-service');
 
 class WatcherService {
@@ -84,7 +85,7 @@ class WatcherService {
                 } finally {
                     isSyncing = false;
                 }
-            }, 1000);
+            }, 250);
         });
 
         return watcher;

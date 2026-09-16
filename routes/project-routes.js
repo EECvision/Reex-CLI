@@ -63,7 +63,8 @@ const createProjectRouter = (apiTargetDir) => {
     router.get('/manifest', (req, res) => {
         const definitionsDir = path.join(apiTargetDir, API_SERVICES_RELATIVE_DIR, 'definitions');
         try {
-            const manifest = projectService.generateManifest(definitionsDir);
+            const force = req.query.force === 'true';
+            const manifest = projectService.generateManifest(definitionsDir, force);
             res.json(manifest);
         } catch (e) {
             console.error(`[MANIFEST] Error:`, e);
@@ -125,7 +126,8 @@ const createProjectRouter = (apiTargetDir) => {
     // Sync / Regenerate Project
     router.post('/config/sync', async (req, res) => {
         try {
-            await generatorService.regenerate(apiTargetDir);
+            const { changedModules } = req.body || {};
+            await generatorService.regenerate(apiTargetDir, changedModules || null);
             res.json({ success: true, message: "Regenerated successfully" });
         } catch (e) {
             console.error("[CONFIG] Sync Error:", e);

@@ -196,9 +196,9 @@ class GeneratorService {
       console.log("[Generator] Scaffolded custom directory");
       // 2. Generate Manifest
       // Prune definition files first (remove unused interfaces/imports)
-      await projectService.pruneUnusedDefinitions(definitionsDir);
+      await projectService.pruneUnusedDefinitions(definitionsDir, changedModules);
 
-      const manifest = projectService.generateManifest(definitionsDir);
+      const manifest = projectService.generateManifest(definitionsDir, true, changedModules);
 
       // 3. Generate Hooks
       hookService.generateHooks(apiTargetDir, manifest, changedModules);
@@ -406,7 +406,7 @@ ${moduleNames.map((name) => `  ...${name}Api,`).join('\n')}
       }
 
       sseService.broadcast(Date.now().toString(), 'project:updated', 'Project generated');
-      console.log("[Generator] Regeneration Complete");
+      console.log("[Generator] ✅ Regeneration Complete");
       return { success: true, manifestKeys: moduleNames };
     } catch (e) {
       console.error("[Generator] Regeneration Failed:", e);

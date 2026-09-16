@@ -21,11 +21,15 @@ function generateTypes(targetDir, manifest, changedModules = null) {
 
   const expectedFiles = new Set();
   const modules = Object.keys(manifest);
+  const modulesToProcess = changedModules && Array.isArray(changedModules)
+    ? modules.filter(m => changedModules.includes(m))
+    : modules;
 
-  console.log(`[TYPES] Generating for ${modules.length} modules...`);
+  console.log(`[TYPES] Generating for ${modulesToProcess.length} modules...`);
 
-  modules.forEach(moduleName => {
+  modulesToProcess.forEach(moduleName => {
     const moduleMethods = manifest[moduleName];
+    if (!moduleMethods) return;
     const moduleTypeDir = path.join(typesDir, moduleName);
 
     if (!fs.existsSync(moduleTypeDir)) {
@@ -74,6 +78,29 @@ function generateTypes(targetDir, manifest, changedModules = null) {
   });
 
   // Cleanup logic
+  const cleanModuleDir = (moduleDir) => {
+    if (!fs.existsSync(moduleDir)) return;
+    const entries = fs.readdirSync(moduleDir);
+    for (const entry of entries) {
+      const fullPath = path.join(moduleDir, entry);
+      const stat = fs.statSync(fullPath);
+      if (!stat.isDirectory() && fullPath.endsWith('.ts') && !expectedFiles.has(fullPath)) {
+        try {
+          fs.unlinkSync(fullPath);
+          const relativePath = path.relative(typesDir, fullPath);
+          console.log(`[Generator] Cleaned up obsolete type file: ${relativePath.replace(/\\/g, '/')}`);
+        } catch (e) {
+          console.error(`[Generator] Failed to clean up types file ${entry}:`, e.message);
+        }
+      }
+    }
+    try {
+      if (fs.readdirSync(moduleDir).length === 0) {
+        fs.rmdirSync(moduleDir);
+      }
+    } catch (e) {}
+  };
+
   const walkAndClean = (dir) => {
     if (!fs.existsSync(dir)) return;
 
@@ -102,7 +129,11 @@ function generateTypes(targetDir, manifest, changedModules = null) {
     }
   };
 
-  walkAndClean(typesDir);
+  if (changedModules && Array.isArray(changedModules)) {
+    modulesToProcess.forEach(mod => cleanModuleDir(path.join(typesDir, mod)));
+  } else {
+    walkAndClean(typesDir);
+  }
   console.log("[TYPES] Generation Complete");
 }
 

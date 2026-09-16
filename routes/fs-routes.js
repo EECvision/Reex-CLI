@@ -25,6 +25,43 @@ const createFsRouter = (apiTargetDir) => {
         }
     });
 
+    // Batch Operations (Writes and Deletes)
+    router.post('/batch', async (req, res) => {
+        try {
+            const { operations } = req.body;
+            if (!Array.isArray(operations)) {
+                return res.status(400).json({ error: "Invalid operations array" });
+            }
+
+            for (const op of operations) {
+                const safePath = path.resolve(apiTargetDir, op.filePath);
+                if (!safePath.startsWith(path.resolve(apiTargetDir))) {
+                    return res.status(403).json({ error: `Access Denied: Path traversal detected on ${op.filePath}` });
+                }
+
+                if (op.type === 'delete') {
+                    if (fs.existsSync(safePath)) {
+                        const stat = fs.statSync(safePath);
+                        if (stat.isDirectory()) {
+                            fs.rmSync(safePath, { recursive: true, force: true });
+                        } else {
+                            fs.unlinkSync(safePath);
+                        }
+                    }
+                } else {
+                    fs.mkdirSync(path.dirname(safePath), { recursive: true });
+                    fs.writeFileSync(safePath, op.content || '', 'utf8');
+                }
+            }
+
+            console.log(`[FS] Batch processed ${operations.length} operations`);
+            res.json({ success: true, count: operations.length });
+        } catch (e) {
+            console.error(`[FS] Batch Error:`, e);
+            res.status(500).json({ error: e.message });
+        }
+    });
+
     // Read File
     router.post('/read', async (req, res) => {
         try {

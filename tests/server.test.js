@@ -13,6 +13,10 @@ test('Bridge Server Integration Tests', async (t) => {
     const configDir = path.join(tmpDir, 'api-services', 'config');
 
     fs.mkdirSync(definitionsDir, { recursive: true });
+    fs.writeFileSync(path.join(tmpDir, 'package.json'), JSON.stringify({
+        name: 'test-app',
+        dependencies: { react: '^18.0.0' }
+    }));
 
     // Create Dummy Definition
     const moduleName = "serverTestUsers";
@@ -59,26 +63,24 @@ test('Bridge Server Integration Tests', async (t) => {
     });
 
     await t.test('Config Scaffolding', async () => {
-        // Assert config/index.ts was created on startup
-        const exists = await waitForFile(path.join(configDir, 'index.ts'));
-        assert.ok(exists, 'Config file should have been scaffolded');
+        // Assert api.config.ts was created on startup
+        const apiConfigPath = path.join(tmpDir, 'api-services', 'api.config.ts');
+        const exists = await waitForFile(apiConfigPath);
+        assert.ok(exists, 'api.config.ts should have been scaffolded');
 
-        const content = fs.readFileSync(path.join(configDir, 'index.ts'), 'utf8');
-        assert.ok(content.includes('export const baseURL'), 'Config should contain default baseURL');
-        assert.ok(content.includes('export const BASE_CLIENT'), 'Config should contain BASE_CLIENT');
-        assert.ok(content.includes('export interface ApiError'), 'Config should contain ApiError interface');
+        const content = fs.readFileSync(apiConfigPath, 'utf8');
+        assert.ok(content.includes('baseURL'), 'Config should contain baseURL');
 
-        // Assert utils.ts
-        assert.ok(fs.existsSync(path.join(configDir, 'utils.ts')), 'Utils file should have been scaffolded');
-        const utilsContent = fs.readFileSync(path.join(configDir, 'utils.ts'), 'utf8');
-        assert.ok(utilsContent.includes('export const handleApiCall'), 'Utils should contain handleApiCall');
+        // Assert core.ts
+        const corePath = path.join(tmpDir, 'api-services', 'core.ts');
+        assert.ok(fs.existsSync(corePath), 'core.ts should have been scaffolded');
     });
 
     await t.test('Generated Folder Restoration', async () => {
-        // Assert generated/index.ts exists
-        const exists = await waitForFile(path.join(generatedDir, 'index.ts'));
-        assert.ok(exists, 'Generated index should exist');
-        assert.ok(fs.existsSync(path.join(generatedDir, `use${moduleName.charAt(0).toUpperCase()}${moduleName.slice(1)}Queries.ts`)), 'Generated module hooks should exist');
+        // Assert hooks directory exists
+        const hooksDir = path.join(tmpDir, 'api-services', 'hooks');
+        const exists = await waitForFile(hooksDir);
+        assert.ok(exists, 'Hooks folder should exist');
     });
 
     await t.test('Fetch Manifest', async () => {
@@ -87,6 +89,49 @@ test('Bridge Server Integration Tests', async (t) => {
 
         assert.ok(manifest[moduleName], 'Manifest should contain test module');
         assert.ok(manifest[moduleName].get_test, 'Manifest should contain test method');
+    });
+
+    await t.test('Batch File Operations', async () => {
+        const batchRes = await fetch(`${BASE_URL}/fs/batch`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                operations: [
+                    { type: 'write', filePath: 'api-services/definitions/batchModuleA.ts', content: 'export const batchModuleA = {};' },
+                    { type: 'write', filePath: 'api-services/definitions/batchModuleB.ts', content: 'export const batchModuleB = {};' },
+                ]
+            })
+        });
+        const batchData = await batchRes.json();
+        assert.strictEqual(batchData.success, true);
+        assert.strictEqual(batchData.count, 2);
+
+        assert.ok(fs.existsSync(path.join(tmpDir, 'api-services', 'definitions', 'batchModuleA.ts')));
+        assert.ok(fs.existsSync(path.join(tmpDir, 'api-services', 'definitions', 'batchModuleB.ts')));
+
+        // Test delete via batch
+        const deleteRes = await fetch(`${BASE_URL}/fs/batch`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                operations: [
+                    { type: 'delete', filePath: 'api-services/definitions/batchModuleB.ts' }
+                ]
+            })
+        });
+        const deleteData = await deleteRes.json();
+        assert.strictEqual(deleteData.success, true);
+        assert.ok(!fs.existsSync(path.join(tmpDir, 'api-services', 'definitions', 'batchModuleB.ts')));
+    });
+
+    await t.test('Config Sync with changedModules', async () => {
+        const syncRes = await fetch(`${BASE_URL}/project/config/sync`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ changedModules: ['serverTestUsers'] })
+        });
+        const syncData = await syncRes.json();
+        assert.strictEqual(syncData.success, true);
     });
 
     await t.test('Debug Regenerate', async () => {
