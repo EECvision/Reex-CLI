@@ -3,7 +3,7 @@
 [![npm version](https://img.shields.io/npm/v/reex-cli.svg?style=flat-square)](https://www.npmjs.com/package/reex-cli)
 [![npm downloads](https://img.shields.io/npm/dm/reex-cli.svg?style=flat-square)](https://www.npmjs.com/package/reex-cli)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT)
-[![GitHub Repository](https://img.shields.io/badge/GitHub-EECvision%2FReex--api--bridge-blue?style=flat-square&logo=github)](https://github.com/EECvision/Reex-api-bridge)
+[![GitHub Repository](https://img.shields.io/badge/GitHub-EECvision%2Freex--cli-blue?style=flat-square&logo=github)](https://github.com/EECvision/reex-cli)
 
 **Reex is the React framework for API integration.** `reex-cli` connects your local codebase to Reex API Studio to generate and sync production-ready typed API services, TanStack Query hooks, and auth providers directly inside your React and Next.js applications.
 

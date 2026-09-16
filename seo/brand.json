@@ -42,6 +42,6 @@
     "name": "reex-cli",
     "command": "reex",
     "url": "https://www.npmjs.com/package/reex-cli",
-    "repository": "https://github.com/EECvision/Reex-api-bridge"
+    "repository": "https://github.com/EECvision/reex-cli"
   }
 }

@@ -36,10 +36,10 @@
     "homepage": "https://www.reex-api.dev",
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/EECvision/Reex-api-bridge.git"
+        "url": "git+https://github.com/EECvision/reex-cli.git"
     },
     "bugs": {
-        "url": "https://github.com/EECvision/Reex-api-bridge/issues"
+        "url": "https://github.com/EECvision/reex-cli/issues"
     },
     "engines": {
         "node": ">=16.0.0"
