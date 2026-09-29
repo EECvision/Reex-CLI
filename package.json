@@ -29,7 +29,10 @@
         "code-generator",
         "cli",
         "rest-api",
-        "hooks"
+        "hooks",
+        "react-query-generator",
+        "openapi-to-react-query",
+        "postman-to-react-query"
     ],
     "author": "Ezeka Emmanuel <ezekaemmanuel1710@gmail.com>",
     "license": "MIT",
